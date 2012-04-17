@@ -16,6 +16,11 @@ endTime = (time, expr) ->
                 expr.right
             )
 
+convertPitch = (note) ->
+  [letter, octave] = note.split ''
+  letterPitch = 'c d ef g a b'.indexOf(letter.toLowerCase())
+  12 + 12 * parseInt(octave, 10) + letterPitch
+
 compile = (musexpr) ->
     notes = []
     comp = (expr, time) ->
@@ -24,7 +29,7 @@ compile = (musexpr) ->
                 notes.push
                     tag: expr.tag
                     dur: expr.dur
-                    pitch: expr.pitch
+                    pitch: convertPitch expr.pitch
                     start: time
             when 'par'
                 comp expr.left, time
