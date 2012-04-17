@@ -4,6 +4,7 @@ map = (xs, f) -> f x for x in xs
 endTime = (time, expr) ->
     switch expr.tag
         when 'note' then time + expr.dur
+        when 'rest' then time + expr.duration
         when 'par'
             max(
                 endTime time, expr.left
@@ -39,16 +40,23 @@ note = (p, d) ->
   pitch: p
   dur: d
 
+rest = (dur) ->
+  tag: 'rest'
+  duration: dur
+
 melody_mus =
   tag: 'seq'
   left:
     tag: 'seq'
-    left: note 'a4', 250
+#    left: note 'a4', 250
+    left: rest 100
     right: note 'b4', 250
   right:
     tag: 'seq'
     left: note 'c4', 250
     right: note 'd4', 250
+
+
 
 console.log melody_mus
 console.log compile melody_mus
