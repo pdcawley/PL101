@@ -2,19 +2,22 @@ max = (a,b) -> Math.max(a,b)
 map = (xs, f) -> f x for x in xs
 
 endTime = (time, expr) ->
-    switch expr.tag
-        when 'note' then time + expr.dur
-        when 'rest' then time + expr.duration
-        when 'par'
-            max(
-                endTime time, expr.left
-                endTime time, expr.right
-            )
-        when 'seq'
-            endTime(
-                endTime time, expr.left
-                expr.right
-            )
+  switch expr.tag
+    when 'note' then time + expr.dur
+    when 'rest' then time + expr.duration
+    when 'repeat'
+      sectionDur = endTime(0, expr.section)
+      time + expr.count * sectionDur
+    when 'par'
+      max(
+        endTime time, expr.left
+         endTime time, expr.right
+      )
+    when 'seq'
+      endTime(
+        endTime time, expr.left
+        expr.right
+      )
 
 convertPitch = (note) ->
   [letter, octave] = note.split ''
@@ -31,12 +34,20 @@ compile = (musexpr) ->
                     dur: expr.dur
                     pitch: convertPitch expr.pitch
                     start: time
+                time + expr.dur
+            when 'repeat'
+              for i in [1..expr.count]
+                time = comp expr.section, time
+              return time
+            when 'rest'
+              time + expr.duration
             when 'par'
+              max(
                 comp expr.left, time
                 comp expr.right, time
+              )
             when 'seq'
-                comp expr.left, time
-                comp expr.right, endTime(time, expr.left)
+              comp expr.right, comp expr.left, time
     comp musexpr, 0
     return notes
 
@@ -49,13 +60,18 @@ rest = (dur) ->
   tag: 'rest'
   duration: dur
 
+repeat = (count, expr) ->
+  tag: 'repeat'
+  section: expr
+  'count': count
+
 melody_mus =
   tag: 'seq'
   left:
     tag: 'seq'
 #    left: note 'a4', 250
     left: rest 100
-    right: note 'b4', 250
+    right: repeat 3, note('b4', 250)
   right:
     tag: 'seq'
     left: note 'c4', 250
