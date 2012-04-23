@@ -1,0 +1,11 @@
+start = note
+
+note = pitch:pitch "[" duration:INT "]" { return $$.note(pitch, duration) }
+
+pitch = note:NOTE_LETTER octave:DIGIT { return [note, octave].join("") }
+
+NOTE_LETTER = char:[a-gA-G] { return char.toLowerCase() }
+
+DIGIT = [0-9]
+
+INT = digits:DIGIT+ { return parseInt(digits.join(''), 10) }
