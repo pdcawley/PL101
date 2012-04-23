@@ -1,25 +1,21 @@
 start =
    expression:expression WS { return expression }
 
-expression =
-    atom
-  / quotedexpression
-  / seq
+expression = atom / quotedexpression / seq
 
 quotedexpression =
   WS "'" expression:expression { return [ "quote", expression ] }
 
 seq = WS "(" WS expression:expression* WS ")" { return expression }
 
-validchar
-    = [0-9a-zA-Z_?!+\-=@#$%^&*/.]
+validchar = [0-9a-zA-Z_?!+\-=@#$%^&*/.]
 
 atom = WS chars:validchar+ { return chars.join(""); }
 
-WS = (comment / onlyWS / NL)*
+WS = (newline / space / comment)*
 
-onlyWS = [ \t\v\f]
+space = [ \t\v\f]
 
-NL = "\n" / "\r\n" / "\r"
+newline = "\n" / "\r\n" / "\r"
 
 comment = ";;" (!NL .)* { return column === 1 ? [] : null }
