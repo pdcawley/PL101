@@ -1,6 +1,10 @@
 start = passage
 
-phrase = "(" _ passage:passage ")" _ { return passage }
+phrase = repetition / simplePhrase
+
+repetition = repcount:INT _ '*' _ event:(simplePhrase / atom) { return $$.rep(repcount, event) }
+
+simplePhrase = "(" _ passage:passage ")" _ { return passage }
 
 passage = events:(phrase / atom)+ { return $$.seq(events) }
 

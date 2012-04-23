@@ -14,9 +14,11 @@ $$.rest = rest = (dur) ->
   duration: dur
 
 $$.rep = rep = (count, expr) ->
-  tag: 'repeat'
-  section: expr
-  'count': count
+  ret =
+    tag: 'repeat'
+    section: expr
+    'count': count
+  ret
 
 $$.seq = seq = (lst) ->
   [expr, exprs...] = lst
@@ -77,6 +79,22 @@ fs.readFile 'mymus.peg', 'ascii', (err, data) ->
     ])
     'phrase'
   )
+
+  assertParses "(a3[100]-[150])", seq([note('a3', 100), rest(150)]), 'simplePhrase'
+  assertParses "(a3[100])", note('a3', 100), 'simplePhrase'
+  assertParses "((a3[100]) -[150])", seq([note('a3', 100), rest(150)]), 'simplePhrase'
+  assertParses(
+    "((a3[100] a3[100]) (-[10] -[10]))"
+    seq([
+      seq([note('a3', 100), note('a3', 100)])
+      seq([rest(10), rest(10)])
+    ])
+    'simplePhrase'
+  )
+
+  assertParses "3 * a4[100]", rep(3, note('a4', 100)), 'repetition'
+  assertParses "3 * (a4[100])", rep(3, note('a4', 100)), 'repetition'
+  assertParses "3 * (a4[100] b4[100])", rep(3, seq([note('a4', 100), note('b4', 100)])), 'repetition'
 
   assertBadParse '()'
   assertBadParse 'z[10]'
