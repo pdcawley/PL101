@@ -1,24 +1,6 @@
 max = (a,b) -> Math.max(a,b)
 map = (xs, f) -> f x for x in xs
 
-endTime = (time, expr) ->
-  switch expr.tag
-    when 'note' then time + expr.dur
-    when 'rest' then time + expr.duration
-    when 'repeat'
-      sectionDur = endTime(0, expr.section)
-      time + expr.count * sectionDur
-    when 'par'
-      max(
-        endTime time, expr.left
-         endTime time, expr.right
-      )
-    when 'seq'
-      endTime(
-        endTime time, expr.left
-        expr.right
-      )
-
 convertPitch = (note) ->
   [letter, octave] = note.split ''
   letterPitch = 'c d ef g a b'.indexOf(letter.toLowerCase())
