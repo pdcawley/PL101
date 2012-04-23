@@ -1,6 +1,16 @@
-start = note
+start = passage
 
-note = pitch:pitch "[" duration:INT "]" { return $$.note(pitch, duration) }
+phrase = "(" _ passage:passage ")" _ { return passage }
+
+passage = events:(phrase / atom)+ { return $$.seq(events) }
+
+atom = note / rest
+
+note = pitch:pitch duration:duration _  { return $$.note(pitch, duration) }
+
+rest = "-" duration:duration _ { return $$.rest(duration) }
+
+duration =  "[" time:INT "]" { return time }
 
 pitch = note:NOTE_LETTER octave:DIGIT { return [note, octave].join("") }
 
@@ -9,3 +19,9 @@ NOTE_LETTER = char:[a-gA-G] { return char.toLowerCase() }
 DIGIT = [0-9]
 
 INT = digits:DIGIT+ { return parseInt(digits.join(''), 10) }
+
+SPACE = [ \t]
+
+NL = "\r\n" / "\n" / "\r"
+
+_ = (SPACE / NL)*

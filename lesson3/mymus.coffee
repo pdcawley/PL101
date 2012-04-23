@@ -13,20 +13,22 @@ $$.rest = rest = (dur) ->
   tag: 'rest'
   duration: dur
 
-$$.repeat = repeat = (count, expr) ->
+$$.rep = rep = (count, expr) ->
   tag: 'repeat'
   section: expr
   'count': count
 
-$$.phrase = phrase = (expr, exprs...) ->
+$$.seq = seq = (lst) ->
+  [expr, exprs...] = lst
   switch exprs.length
     when 0 then expr
     else
       tag: 'seq'
       left: expr
-      right: phrase exprs
+      right: seq exprs
 
-$$.par = par = (expr, exprs...) ->
+$$.par = par = (lst) ->
+  [expr, exprs...] = lst
   switch exprs.length
     when 0 then expr
     else
@@ -39,11 +41,44 @@ fs.readFile 'mymus.peg', 'ascii', (err, data) ->
   parse = parser.parse
 
   assertParses = (input, expected, production) ->
-    assert.deepEqual parse(input, production || 'start'), expected
+    console.log input
+    if expected
+      assert.deepEqual parse(input, production || 'start'), expected
+    else
+      assert.doesNotThrow () -> parse input, production || 'start'
 
   assertBadParse = (input) ->
+    console.log "BAD: '#{input}'"
     assert.throws () -> parse(input)
 
   assertParses 'a4[100]', note('a4', 100), 'note'
   assertParses 'b4[100]', note('b4', 100), 'note'
   assertParses 'A4[100]', note('a4', 100), 'note'
+
+  assertParses '-[100]', rest(100), 'rest'
+
+  assertParses 'a4[100]',          note('a4', 100),                      'passage'
+  assertParses 'a4[100]-[100]',    seq([note('a4', 100), rest(100)]), 'passage'
+  assertParses 'a4[100] -[100]',   seq([note('a4', 100), rest(100)]), 'passage'
+  assertParses "a4[100]  -[100]",  seq([note('a4', 100), rest(100)]), 'passage'
+  assertParses "a4[100] \n-[100]", seq([note('a4', 100), rest(100)]), 'passage'
+
+  assertParses "a3[100]", null, 'atom'
+  assertParses "-[100]", null, 'atom'
+
+  assertParses "(a3[100]-[150])", seq([note('a3', 100), rest(150)]), 'phrase'
+  assertParses "(a3[100])", note('a3', 100), 'phrase'
+  assertParses "((a3[100]) -[150])", seq([note('a3', 100), rest(150)]), 'phrase'
+  assertParses(
+    "((a3[100] a3[100]) (-[10] -[10]))"
+    seq([
+      seq([note('a3', 100), note('a3', 100)])
+      seq([rest(10), rest(10)])
+    ])
+    'phrase'
+  )
+
+  assertBadParse '()'
+  assertBadParse 'z[10]'
+  assertBadParse 'a4[]'
+  assertBadParse 'a4[-10]'
