@@ -1,8 +1,17 @@
-start = passage
+start = _ passage:passage { return passage }
 
-phrase = repetition / simplePhrase
+phrase = repetition / harmony / simplePhrase
 
-repetition = repcount:INT _ '*' _ event:(simplePhrase / atom) { return $$.rep(repcount, event) }
+harmony = "(" _ exprs:harmonyClauses _ ")" _ { return $$.par(exprs) }
+
+harmonyClauses =
+    head:passage _ tail:(("|" _ each:passage) { return each })+ { return [head].concat(tail) }
+
+repetition =
+    repcount:INT _ '*' _ event:(repeatablePhrase / atom) { return $$.rep(repcount, event) }
+  / repcount:INT phrase:repeatablePhrase { return $$.rep(repcount, phrase) }
+
+repeatablePhrase = harmony / simplePhrase
 
 simplePhrase = "(" _ passage:passage ")" _ { return passage }
 

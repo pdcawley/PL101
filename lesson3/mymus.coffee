@@ -45,9 +45,9 @@ fs.readFile 'mymus.peg', 'ascii', (err, data) ->
   assertParses = (input, expected, production) ->
     console.log input
     if expected
-      assert.deepEqual parse(input, production || 'start'), expected
+      assert.deepEqual parse(input, production), expected
     else
-      assert.doesNotThrow () -> parse input, production || 'start'
+      assert.doesNotThrow () -> parse input, production
 
   assertBadParse = (input) ->
     console.log "BAD: '#{input}'"
@@ -80,22 +80,27 @@ fs.readFile 'mymus.peg', 'ascii', (err, data) ->
     'phrase'
   )
 
-  assertParses "(a3[100]-[150])", seq([note('a3', 100), rest(150)]), 'simplePhrase'
-  assertParses "(a3[100])", note('a3', 100), 'simplePhrase'
-  assertParses "((a3[100]) -[150])", seq([note('a3', 100), rest(150)]), 'simplePhrase'
-  assertParses(
-    "((a3[100] a3[100]) (-[10] -[10]))"
-    seq([
-      seq([note('a3', 100), note('a3', 100)])
-      seq([rest(10), rest(10)])
-    ])
-    'simplePhrase'
-  )
+  assertParses "a4[100] b4[100] (a4[100] -[50])"
 
   assertParses "3 * a4[100]", rep(3, note('a4', 100)), 'repetition'
   assertParses "3 * (a4[100])", rep(3, note('a4', 100)), 'repetition'
   assertParses "3 * (a4[100] b4[100])", rep(3, seq([note('a4', 100), note('b4', 100)])), 'repetition'
 
+  assertParses(
+    "( c3[100] | e3[100] | g3[100] )"
+    par([note('c3', 100), note('e3', 100), note('g3', 100)])
+  )
+
+  assertParses(
+    "3*(c3[100] | e3[100])"
+    rep(3, par([note('c3', 100), note('e3', 100)]))
+  )
+  assertParses(
+    "3(c3[100] | e3[100])"
+    rep(3, par([note('c3', 100), note('e3', 100)]))
+  )
+
+  assertBadParse '2*3*a4[100]'
   assertBadParse '()'
   assertBadParse 'z[10]'
   assertBadParse 'a4[]'
