@@ -1,31 +1,49 @@
+{
+  var $ = require('mymus');
+}
+
 start = _ passage:passage { return passage }
 
 phrase = repetition / harmony / simplePhrase
 
-harmony = "(" _ exprs:harmonyClauses _ ")" _ { return $$.par(exprs) }
+harmony = "(" _ exprs:harmonyClauses _ ")" _ { return $.par(exprs) }
 
 harmonyClauses =
     head:passage _ tail:(("|" _ each:passage) { return each })+ { return [head].concat(tail) }
 
 repetition =
-    repcount:INT _ '*' _ event:(repeatablePhrase / atom) { return $$.rep(repcount, event) }
-  / repcount:INT phrase:repeatablePhrase { return $$.rep(repcount, phrase) }
+    repcount:INT _ '*' _ event:(repeatablePhrase / atom) { return $.rep(repcount, event) }
+  / repcount:INT phrase:repeatablePhrase { return $.rep(repcount, phrase) }
 
 repeatablePhrase = harmony / simplePhrase
 
 simplePhrase = "(" _ passage:passage ")" _ { return passage }
 
-passage = events:(phrase / atom)+ { return $$.seq(events) }
+passage = events:(phrase / atom)+ { return $.seq(events) }
 
-atom = note / rest
+atom = triplet / swung_pair / note / rest
 
-note = pitch:pitch duration:duration _  { return $$.note(pitch, duration) }
+triplet = "3{" _ first:pitch_rest second:pitch_rest third:pitch_rest "}" duration:duration _
+          { return $.triplet([first, second, third], duration) }
 
-rest = "-" duration:duration _ { return $$.rest(duration) }
+pitch_rest = pitch:pitch _ { return { "tag": 'note', "pitch": pitch } }
+              / "-" _         { return { "tag": 'rest', } }
 
-duration =  "[" time:INT "]" { return time }
+swung_pair = first:note ">" _ second:pitch _ { return $.swung_pair(first, second) }
+
+note = pitch:pitch duration:duration _  { return $.note(pitch, duration) }
+     / pitch:pitch _ { return $.note(pitch, $.beatLen()) }
+
+rest = "-" duration:duration _ { return $.rest(duration) }
+     / "-" _                   { return $.rest($.beatLen()) }
+
+duration =  "[" time:INT "]"   { return time }
+          / ":" length:INT "." { return 6 * $.beatLen() / length }
+          / ":" length:INT     { return 4 * $.beatLen() / length }
+          / "."                { return 3 * $.beatLen() / 2 }
 
 pitch = note:NOTE_LETTER octave:DIGIT { return [note, octave].join("") }
+      / note:NOTE_LETTER "#" octave:DIGIT { return [note, '#', octave].join("") }
 
 NOTE_LETTER = char:[a-gA-G] { return char.toLowerCase() }
 
