@@ -19,6 +19,14 @@ evalScheem = (expr, env) ->
       return 0
     when 'begin'
       evlist expr[1..], env
+    when '<'
+      lt = evalScheem(expr[1], env) < evalScheem(expr[2], env)
+      if lt then '#t'
+      else '#f'
+    when '='
+      eq = evalScheem(expr[1], env) == evalScheem(expr[2], env)
+      if eq then '#t'
+      else '#f'
 
 
 if (typeof module != 'undefined')

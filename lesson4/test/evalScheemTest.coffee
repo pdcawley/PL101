@@ -111,3 +111,22 @@ suite 'begin', ->
       5
     )
     assert.deepEqual this.env, {'a': 2, 'b': 3}
+
+
+suite "Comparison and equality", ->
+  expectations = [
+    ['<', 1, 2, '#t']
+    ['<', 2, 1, '#f']
+    ['<', 1, 1, '#f']
+    ['=', 1, 2, '#f']
+    ['=', 2, 1, '#f']
+    ['=', 1, 1, '#t']
+  ]
+
+  for expectation in expectations
+    [op, arg1, arg2, res] = expectation
+    test "(#{op} #{arg1} #{arg2}) => #{res}", ->
+      assert.equal(
+        evalScheem expectation[0..2], {}
+        res
+      )
