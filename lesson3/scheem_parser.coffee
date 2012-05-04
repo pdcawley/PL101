@@ -16,6 +16,7 @@ fs.readFile 'scheem.peg', 'ascii', (err, data) ->
   assertParses "atom", "atom"
   assertParses "atom\n;; foo\n", "atom"
   assertParses "'(a  (b  c  ) )", ["quote", ["a", ["b", "c"]]]
+  assertParses "(if #t 1 0)", ["if", "#t", 1, 0]
 
   assertBadParse """
     (a (b ;; t <- I think this should work

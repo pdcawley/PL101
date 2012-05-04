@@ -1,0 +1,29 @@
+start =
+   expression:expression _ { return expression }
+
+expression = number / atom / quotedexpression / seq
+
+quotedexpression =
+  _ "'" expression:expression { return [ "quote", expression ] }
+
+seq = _ "(" _ expression:expression* _ ")" { return expression }
+
+validchar = [0-9a-zA-Z_?!+\-=@#$%^&*</.]
+
+atom = _ chars:validchar+ { return chars.join(""); }
+
+_ = (newline / space / comment)*
+
+space = [ \t\v\f]
+
+newline = "\n" / "\r\n" / "\r"
+
+comment = ";;" (!newline .)* { return column === 1 ? [] : null }
+
+number = _ parts:(intPart decimalPart?) { return parseFloat(parts.join('')) }
+
+sign = sign:('-' / '+') { return sign[0] }
+intPart = sign:sign? intPart:simpleNumber { return sign + intPart }
+decimalPart = '.' decimalPart:simpleNumber { return '.' + decimalPart }
+
+simpleNumber = digits:[0-9]+ { return digits.join('') }

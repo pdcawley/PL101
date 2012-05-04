@@ -4,9 +4,22 @@ evlist = (exprs, env) ->
     ret = evalScheem expr, env
   return ret
 
-evalScheem = (expr, env) ->
+if (typeof module != 'undefined')
+  exports = module.exports
+  PEG = require('pegjs')
+  fs = require('fs');
+  exports.parse = parse =
+    PEG.buildParser(fs.readFileSync('scheem.peg', 'utf-8')).parse
+else
+  exports = window
+  exports.parse = parse = SCHEEM.parse
+
+exports.evalScheem = evalScheem = (expr, env) ->
   if typeof expr == 'number' then return expr
-  if typeof expr == 'string' then return env[expr]
+  if typeof expr == 'string'
+    switch expr
+      when '#t', '#f' then return expr
+      else return env[expr]
   switch expr[0]
     when '+'
       return(
@@ -41,7 +54,7 @@ evalScheem = (expr, env) ->
       else
         evalScheem expr[3], env
 
-printScheem = (expr) ->
+exports.printScheem = printScheem = (expr) ->
   switch typeof expr
     when 'number', 'string' then "#{expr}"
     when 'true'
@@ -52,12 +65,5 @@ printScheem = (expr) ->
       (printScheem(i) for i in expr).join(' ') +
       ")"
 
-
-
-
-if (typeof module != 'undefined')
-  module.exports.evalScheem = evalScheem
-  module.exports.printScheem = printScheem
-else
-  window.evalScheem = evalScheem
-  window.printScheem = printScheem
+exports.evalScheemString = evalScheemString = (src, env) ->
+  evalScheem(parse(src), env)

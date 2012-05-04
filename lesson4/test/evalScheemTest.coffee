@@ -1,12 +1,37 @@
 if (typeof module != 'undefined')
   assert = require('chai').assert
-  scheem = requier('../scheem')
+  scheem = require('../scheem')
   evalScheem = scheem.evalScheem
   printScheem = scheem.printScheem
+  evalScheemString = scheem.evalScheemString
+  parse = scheem.parse
 else
   assert = chai.assert
   evalScheem = window.evalScheem
   printScheem = window.printScheem
+  evalScheemString = window.evalScheemString
+  parse = window.parse
+
+suite "Expressions", ->
+  test "(= 1 1)", ->
+    assert.deepEqual parse("(= 1 1)"), ['=', 1, 1]
+    assert.equal evalScheemString("(= 1 1)", {}), '#t'
+  test "(if (= 1 1) 'same 'different) -> 'same')", ->
+    assert.deepEqual(
+      parse("(if (= 1 1) 'same 'different)")
+      ['if', ['=', 1,1], ['quote', 'same'], ['quote', 'different']]
+    )
+    assert.equal evalScheemString("(if (= 1 1) 'same 'different)", {}), "same"
+  test "(+ a 1) {a:2} -> 3", ->
+    assert.equal(evalScheemString('(+ a 1)', {a:2}), 3)
+  test "(begin (set! a 1) (set! b 2) (if (< a b) (+ a b) (- a b)))", ->
+    assert.equal(
+      evalScheemString(
+        "(begin (set! a 1) (set! b 2) (if (< a b) (+ a b) (- a b)))"
+        {}
+      )
+      3
+    )
 
 suite 'quote', ->
   test 'a number', ->
@@ -134,6 +159,13 @@ suite "Comparison and equality", ->
         res
       )
 
+    test "evalScheemString('(#{op} #{arg1} #{arg2})') -> #{res}", ->
+      assert.equal(
+        evalScheemString("(#{op} #{arg1} #{arg2})", {})
+        res
+      )
+
+
 
 suite "printScheem", ->
   test "number", ->
@@ -157,6 +189,11 @@ suite "Consing stuff up", ->
         evalScheem ['cons', car, cdr], {}
         res
       )
+    test "evalString(#{printScheem(['cons', car, cdr])}) => #{printScheem(res)}", ->
+      assert.deepEqual(
+        evalScheemString(printScheem(['cons', car, cdr], {}))
+        res
+      )
 
 suite "Car and cdr", ->
   table = [
@@ -170,12 +207,12 @@ suite "Car and cdr", ->
     [input, car, cdr] = expectation
     test "#{printScheem ['car', ['quote', input]]} => #{printScheem car}", ->
       assert.deepEqual(
-        evalScheem ['car', ['quote', input]], {}
+        evalScheemString printScheem(['car', ['quote', input]]), {}
         car
       )
     test "#{printScheem ['cdr', ['quote', input]]} => #{printScheem cdr}", ->
       assert.deepEqual(
-        evalScheem ['cdr', ['quote', input]], {}
+        evalScheemString printScheem(['cdr', ['quote', input]]), {}
         cdr
       )
 
@@ -199,22 +236,43 @@ suite "If", ->
   ]
 
   for expectation in tests
-    [ cond, res ] = expectation
-    test "(if #{printScheem cond} 1 0) => #{res}", ->
+    [ cond, exp ] = expectation
+    test "(if #{printScheem cond} 1 0) => #{exp}", ->
       env = {}
-      assert.evalsTo(
-        [
-          'if', cond
-          ['set!', 'true', 1]
-          ['set!', 'false', 1]
-        ]
-        0
+      res = evalScheemString(
+        "(if #{printScheem cond} (set! true 1) (set! false 1))"
         env
       )
+      assert.equal res, 0
       # Should only eval the selected expr
-      if res
+      if exp
         assert.equal env['true'], 1
         assert.ok !env.hasOwnProperty('false')
       else
         assert.equal env['else'], 1
         assert.ok !env.hasOwnProperty('true')
+
+suite "Parse + Interpret", ->
+  suite "Numerics", ->
+    test "'5' -> 5", ->
+      assert.equal evalScheemString("5", {}), 5
+    test "'-5' -> -5", ->
+      assert.equal evalScheemString("-5", {}), -5
+    test "'+5' -> 5", ->
+      assert.equal evalScheemString("+5", {}), 5
+    test "'5.5' -> 5.5", ->
+      assert.equal evalScheemString("5.5", {}), 5.5
+
+  suite "Self-eval", ->
+    test '#t', ->
+      assert.equal evalScheemString('#t', {}), '#t'
+
+  suite "Quote", ->
+    test "'quoted", ->
+      assert.deepEqual evalScheemString("'quoted", {}), 'quoted'
+    test "'(a b c)", ->
+      assert.deepEqual evalScheemString("'(a b c)", {}), ['a', 'b', 'c']
+
+  suite "Arithmetic", ->
+    test "1", ->
+      assert.equal evalScheemString("(+ 1 2)", {}), 3
