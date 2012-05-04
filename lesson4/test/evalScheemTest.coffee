@@ -1,5 +1,7 @@
 if (typeof module != 'undefined')
-  assert = require('chai').assert
+  CHAI = require('chai')
+  assert = CHAI.assert
+  expect = CHAI.expect
   scheem = require('../scheem')
   evalScheem = scheem.evalScheem
   printScheem = scheem.printScheem
@@ -7,6 +9,7 @@ if (typeof module != 'undefined')
   parse = scheem.parse
 else
   assert = chai.assert
+  expect = chai.expect
   evalScheem = window.evalScheem
   printScheem = window.printScheem
   evalScheemString = window.evalScheemString
@@ -24,10 +27,10 @@ suite "Expressions", ->
     assert.equal evalScheemString("(if (= 1 1) 'same 'different)", {}), "same"
   test "(+ a 1) {a:2} -> 3", ->
     assert.equal(evalScheemString('(+ a 1)', {a:2}), 3)
-  test "(begin (set! a 1) (set! b 2) (if (< a b) (+ a b) (- a b)))", ->
+  test "(begin (define a 1) (define b 2) (if (< a b) (+ a b) (- a b)))", ->
     assert.equal(
       evalScheemString(
-        "(begin (set! a 1) (set! b 2) (if (< a b) (+ a b) (- a b)))"
+        "(begin (define a 1) (define b 2) (if (< a b) (+ a b) (- a b)))"
         {}
       )
       3
@@ -63,18 +66,18 @@ suite 'Setting Variables', ->
 
   test 'a number', ->
     assert.deepEqual(
-      evalScheem ['set!', 'a-num', ['quote', 3]], this.env
+      evalScheem ['define', 'a-num', ['quote', 3]], this.env
       0
     )
     assert.deepEqual this.env, { "a-num": 3 }
   test 'an atom', ->
     assert.deepEqual(
-      evalScheem ['set!', 'a-string', ['quote', 'dog']], this.env
+      evalScheem ['define', 'a-string', ['quote', 'dog']], this.env
       0
     )
     assert.deepEqual this.env, { "a-string": 'dog' }
   test 'a list', ->
-    evalScheem ['set!', 'a-list', ['quote', [1,2,3]]], this.env
+    evalScheem ['define', 'a-list', ['quote', [1,2,3]]], this.env
     assert.deepEqual this.env, {"a-list": [1,2,3]}
 
 suite 'Accessing variables', ->
@@ -111,7 +114,7 @@ suite 'begin', ->
   test "One entry", ->
     evalScheem(
       [ 'begin'
-        [ 'set!', 'a', 2 ] ]
+        [ 'define', 'a', 2 ] ]
       this.env
     )
     assert.deepEqual this.env, {'a': 2}
@@ -119,8 +122,8 @@ suite 'begin', ->
   test "Two cmnds", ->
     evalScheem(
       [ 'begin'
-        [ 'set!', 'a', 2 ]
-        [ 'set!', 'b', 3 ]
+        [ 'define', 'a', 2 ]
+        [ 'define', 'b', 3 ]
       ]
       this.env
     )
@@ -130,8 +133,8 @@ suite 'begin', ->
     assert.deepEqual(
       evalScheem(
         [ 'begin'
-          [ 'set!', 'a', 2 ]
-          [ 'set!', 'b', 3 ]
+          [ 'define', 'a', 2 ]
+          [ 'define', 'b', 3 ]
           [ '+', 'a', 'b']
         ]
         this.env
@@ -216,14 +219,6 @@ suite "Car and cdr", ->
         cdr
       )
 
-assert.evalsTo = (expr, expected, env) ->
-  env ?= {}
-  assert.deepEqual(
-    evalScheem expr, env
-    expected
-  )
-
-
 suite "If", ->
   tests = [
     [ '#t',       true  ]
@@ -240,7 +235,7 @@ suite "If", ->
     test "(if #{printScheem cond} 1 0) => #{exp}", ->
       env = {}
       res = evalScheemString(
-        "(if #{printScheem cond} (set! true 1) (set! false 1))"
+        "(if #{printScheem cond} (define true 1) (define false 1))"
         env
       )
       assert.equal res, 0
@@ -251,6 +246,17 @@ suite "If", ->
       else
         assert.equal env['else'], 1
         assert.ok !env.hasOwnProperty('true')
+
+assert.evalsTo = (src, exp, env) ->
+  env ?= {}
+  assert.deepEqual(
+    evalScheemString(src, env)
+    exp
+  )
+
+delayedEval = (expr, env) ->
+  env ?= {}
+  -> evalScheemString(expr, env)
 
 suite "Parse + Interpret", ->
   suite "Numerics", ->
@@ -266,6 +272,8 @@ suite "Parse + Interpret", ->
   suite "Self-eval", ->
     test '#t', ->
       assert.equal evalScheemString('#t', {}), '#t'
+    test '()', ->
+      assert.evalsTo('()', [])
 
   suite "Quote", ->
     test "'quoted", ->
@@ -276,3 +284,28 @@ suite "Parse + Interpret", ->
   suite "Arithmetic", ->
     test "1", ->
       assert.equal evalScheemString("(+ 1 2)", {}), 3
+
+  suite "Environment manipulation", ->
+    suite "define", ->
+      test "(define a 2) sets a", ->
+        env = {}
+        evalScheemString('(define a 2)', env)
+        assert.equal env.a, 2
+      test "Redefinition is ok...", ->
+        assert.evalsTo "(begin (define a 2) (define a 3) a)", 3
+      test "(define a 2 3) is invalid", ->
+        expect(delayedEval "(define a 2 3)", {}).to.throw()
+
+    suite "set!", ->
+      test "an existing variable", ->
+        assert.evalsTo("(begin (define a 1) (set! a 3) a)", 3)
+      test "cannot set a nonexistent variable", ->
+        expect(delayedEval "(set! a 3)", {}).to.throw('set!: cannot set variable before its definition: a')
+      test "(set! a 2 3) is a syntax error when redefining a var", ->
+        expect(delayedEval "(set! a 3 2)", {a:1}).to.throw(
+          'set!: bad syntax (has 3 parts after the keyword) in: (set! a 3 2)'
+        )
+      test "(set! a 2 3) is a syntax error and when trying to add a new one", ->
+        expect(delayedEval "(set! a 3 2)", {}).to.throw(
+          'set!: bad syntax (has 3 parts after the keyword) in: (set! a 3 2)'
+        )
