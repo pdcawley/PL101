@@ -12,10 +12,10 @@ validchar = [0-9a-zA-Z_?!+\-=@#$%^&*/.]
 
 atom = WS chars:validchar+ { return chars.join(""); }
 
-WS = (newline / space / comment)*
+WS = (NL / space / comment)*
 
 space = [ \t\v\f]
 
-newline = "\n" / "\r\n" / "\r"
+NL = "\n" / "\r\n" / "\r"
 
 comment = ";;" (!NL .)* { return column === 1 ? [] : null }
