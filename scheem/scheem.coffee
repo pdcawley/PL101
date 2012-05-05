@@ -11,7 +11,7 @@ else
 throwBadArity = (expr) ->
   [form, parts...] = expr;
   throw new Error(
-    "#{form.key ? '#<procedure>'}: bad syntax (has #{parts.length} parts after the keyword) " +
+    "#{printScheem(form)}: bad syntax (has #{parts.length} parts after the keyword) " +
     "in: #{printScheem expr}"
   )
 
@@ -44,8 +44,8 @@ class Environment
     ret.frame = frame
     return ret
 
-assertArity = (expr, arity) ->
-  throwBadArity(expr) unless ((expr.arity ? expr.length) == arity + 1)
+assertArity = (expr, requiredArity) ->
+  throwBadArity(expr) unless (arity(expr) == requiredArity + 1)
 
 specialForms =
   quote:
@@ -161,7 +161,7 @@ exports.printScheem = printScheem = (expr) ->
           (printScheem(i) for i in expr).join(' ') +
           ")"
         when 'Function'
-          '#<procedure>'
+          expr.key ? '#<procedure>'
         else "unknown construct, punting to javascript: #{expr}"
 
 exports.evalScheemString = evalScheemString = (src, env) ->
