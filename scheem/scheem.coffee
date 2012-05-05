@@ -112,7 +112,7 @@ _apply = (func, exprs, env) ->
   func( (_eval(expr, env) for expr in exprs)... )
 
 
-theGlobalEnv = new Environment theNullEnvironment
+exports.theGlobalEnv = new Environment theNullEnvironment
 theGlobalEnv.frame = functions
 
 # lookup = (env, symbol) -> env[symbol]
