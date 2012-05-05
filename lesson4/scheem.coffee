@@ -11,12 +11,41 @@ else
 throwBadArity = (expr) ->
   [form, parts...] = expr;
   throw new Error(
-    "#{form}: bad syntax (has #{parts.length} parts after the keyword) " +
+    "#{form.key ? '#<procedure>'}: bad syntax (has #{parts.length} parts after the keyword) " +
     "in: #{printScheem expr}"
   )
 
+theNullEnvironment =
+  lookup: (symbol) ->
+    throw new Error "reference to an identifier before its definition: #{symbol}"
+  isDefined: (symbol) -> false
+  set: (symbol) ->
+    throw new Error "cannot set variable before its definition: #{symbol}"
+
+class Environment
+  constructor: (@parent) ->
+    @frame = {}
+  lookup: (symbol) ->
+    if @frame[symbol]?
+      @frame[symbol]
+    else
+      @parent.lookup(symbol)
+  isDefined: (symbol) -> @frame[symbol]? || @parent.isDefined(symbol)
+  set: (symbol, value) ->
+    if @frame[symbol]?
+      @frame[symbol] = value
+    else
+      @parent.set(symbol)
+  define: (symbol, value) ->
+    @frame[symbol] = value
+  extend: () -> new Environment this
+  extendWith: (frame) ->
+    ret = new Environment this
+    ret.frame = frame
+    return ret
+
 assertArity = (expr, arity) ->
-  throwBadArity(expr) unless expr.length == arity + 1
+  throwBadArity(expr) unless ((expr.arity ? expr.length) == arity + 1)
 
 specialForms =
   quote:
@@ -47,6 +76,22 @@ specialForms =
     evaluate: (exprs, env) ->
       retval = _eval(expr, env) for expr in exprs
       return retval
+  'lambda':
+    checkSyntax: (expr) ->
+      unless expr[1].constructor.name == 'Array'
+        throw new Error "lambda: bad args in: #{expr}"
+      unless expr.length > 2
+        throw new Error "lambda: missing body in #{expr}"
+    evaluate: (expr, env) ->
+      [argl, body...] = expr
+      func = (args...) ->
+        af = {};
+        af[argl[i]] = val for val, i in args
+        activationEnv = env.extendWith(af)
+        retval = _eval(expr, activationEnv) for expr in body
+        return retval
+      func.arity = argl.length
+      return func
 
 functions =
   '+': (x, y) -> x + y
@@ -58,40 +103,14 @@ functions =
 
 func.key = key for key, func of functions
 
+arity = (func) -> func.arity ? func.length
+
 _apply = (func, exprs, env) ->
-  if func.length > 0
-    assertArity [func.key, exprs...], func.length
+  if arity(func) > 0
+    assertArity [func, exprs...], arity(func)
 
   func( (_eval(expr, env) for expr in exprs)... )
 
-theNullEnvironment =
-  lookup: (symbol) ->
-    throw new Error "reference to an identifier before its definition: #{symbol}"
-  isDefined: (symbol) -> false
-  set: (symbol) ->
-    throw new Error "cannot set variable before its definition: #{symbol}"
-
-class Environment
-  constructor: (@parent) ->
-    @frame = {}
-  lookup: (symbol) ->
-    if @frame[symbol]?
-      @frame[symbol]
-    else
-      @parent.lookup(symbol)
-  isDefined: (symbol) -> @frame[symbol]? || @parent.isDefined(symbol)
-  set: (symbol, value) ->
-    if @frame[symbol]?
-      @frame[symbol] = value
-    else
-      @parent.set(symbol)
-  define: (symbol, value) ->
-    @frame[symbol] = value
-  extend: () -> new Environment this
-  extendWith: (frame) ->
-    ret = new Environment this
-    ret.frame = frame
-    return ret
 
 theGlobalEnv = new Environment theNullEnvironment
 theGlobalEnv.frame = functions
@@ -130,14 +149,20 @@ _eval = (expr, env) ->
 
 exports.printScheem = printScheem = (expr) ->
   switch typeof expr
+    when 'undefined' then "*undef*"
     when 'number', 'string' then "#{expr}"
     when 'true'
       if expr then '#t'
       else         '#f'
     else
-      "(" +
-      (printScheem(i) for i in expr).join(' ') +
-      ")"
+      switch expr.constructor.name
+        when 'Array'
+          "(" +
+          (printScheem(i) for i in expr).join(' ') +
+          ")"
+        when 'Function'
+          '#<procedure>'
+        else "unknown construct, punting to javascript: #{expr}"
 
 exports.evalScheemString = evalScheemString = (src, env) ->
   evalScheem(parse(src), env)

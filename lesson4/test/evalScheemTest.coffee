@@ -15,6 +15,17 @@ else
   evalScheemString = window.evalScheemString
   parse = window.parse
 
+suite "Lambda", ->
+  test "((lambda () 1)) -> 1", ->
+    assert.evalsTo("((lambda () 1))", 1)
+  test "((lambda (x) (+ x x)) 1)", ->
+    assert.evalsTo( "((lambda (x) (+ x x)) 1)", 2 )
+  test "(begin (define addN (lambda (n) (lambda (x) (+ x n)))) ((addN 2) 1)", ->
+    assert.evalsTo(
+      "(begin (define addN (lambda (n) (lambda (x) (+ x n)))) ((addN 2) 1))"
+      3
+    )
+
 suite "Expressions", ->
   test "(= 1 1)", ->
     assert.deepEqual parse("(= 1 1)"), ['=', 1, 1]
