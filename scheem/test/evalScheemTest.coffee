@@ -15,6 +15,30 @@ else
   evalScheemString = window.evalScheemString
   parse = window.parse
 
+# suite "Strings", ->
+#   test "Simple strings", ->
+#     assert.evalsTo('"a-string"', "a-string")
+
+assert.evalsTo = (src, exp, env) ->
+  env ?= {}
+  assert.deepEqual(
+    evalScheemString(src, env)
+    exp
+  )
+
+delayedEval = (expr, env) ->
+  env ?= {}
+  -> evalScheemString(expr, env)
+
+testEval = (expr, res, env) ->
+  test "#{expr} -> #{printScheem res}", ->
+    assert.evalsTo expr, res, env ? {}
+
+
+__ = (string) ->
+  tokenType: 'symbol'
+  value: string
+
 suite "Lambda", ->
   test "((lambda () 1)) -> 1", ->
     assert.evalsTo("((lambda () 1))", 1)
@@ -28,14 +52,10 @@ suite "Lambda", ->
 
 suite "Expressions", ->
   test "(= 1 1)", ->
-    assert.deepEqual parse("(= 1 1)"), ['=', 1, 1]
-    assert.equal evalScheemString("(= 1 1)", {}), '#t'
-  test "(if (= 1 1) 'same 'different) -> 'same')", ->
-    assert.deepEqual(
-      parse("(if (= 1 1) 'same 'different)")
-      ['if', ['=', 1,1], ['quote', 'same'], ['quote', 'different']]
-    )
-    assert.equal evalScheemString("(if (= 1 1) 'same 'different)", {}), "same"
+    assert.deepEqual parse("(= 1 1)"), [__('='), 1, 1]
+    assert.equal evalScheemString("(= 1 1)", {}), true
+  test "(if (= 1 1) \"same\" \"different\") -> 'same')", ->
+    assert.equal evalScheemString("(if (= 1 1) \"same\" \"different\")", {}), "same"
   test "(+ a 1) {a:2} -> 3", ->
     assert.equal(evalScheemString('(+ a 1)', {a:2}), 3)
   test "(begin (define a 1) (define b 2) (if (< a b) (+ a b) (- a b)))", ->
@@ -71,115 +91,66 @@ suite 'Numbers', ->
       3
     )
 
-suite 'Setting Variables', ->
-  setup ->
-    this.env = {}
-
+suite 'Defining Variables', ->
   test 'a number', ->
-    assert.deepEqual(
-      evalScheem ['define', 'a-num', ['quote', 3]], this.env
-      0
-    )
-    assert.deepEqual this.env, { "a-num": 3 }
+    assert.evalsTo "(begin (define a-num 3) a-num)", 3
   test 'an atom', ->
-    assert.deepEqual(
-      evalScheem ['define', 'a-string', ['quote', 'dog']], this.env
-      0
-    )
-    assert.deepEqual this.env, { "a-string": 'dog' }
+    assert.evalsTo "(begin (define a-symbol 'dog) a-symbol)", __('dog')
   test 'a list', ->
-    evalScheem ['define', 'a-list', ['quote', [1,2,3]]], this.env
-    assert.deepEqual this.env, {"a-list": [1,2,3]}
+    assert.evalsTo "(begin (define a-list '(1 2 3)) a-list)", [1,2,3]
 
 suite 'Accessing variables', ->
   test 'an existing variable can be looked up', ->
-    assert.deepEqual(
-      evalScheem('a', {a: 99})
-      99
-    )
+    assert.evalsTo "a", 99, {a:99}
 
-suite 'Defining Variables', ->
+suite 'Setting Variables', ->
   setup ->
-    this.env = {}
+    this.env = {'the-var': []}
 
   test 'a number', ->
-    assert.deepEqual(
-      evalScheem ['define', 'a-num', ['quote', 3]], this.env
-      0
-    )
-    assert.deepEqual this.env, { "a-num": 3 }
+    assert.evalsTo "(begin (set! the-var 3) the-var)", 3, this.env
   test 'an atom', ->
-    assert.deepEqual(
-      evalScheem ['define', 'a-string', ['quote', 'dog']], this.env
-      0
-    )
-    assert.deepEqual this.env, { "a-string": 'dog' }
-  test 'a list', ->
-    evalScheem ['define', 'a-list', ['quote', [1,2,3]]], this.env
-    assert.deepEqual this.env, {"a-list": [1,2,3]}
+    assert.evalsTo "(begin (set! the-var 'dog) the-var)", __('dog'), this.env
+  test 'an atom', ->
+    assert.evalsTo "(begin (set! the-var '(1 2 3)) the-var)", [1,2,3], this.env
 
-suite 'begin', ->
-  setup ->
-    this.env = {}
-
+suite '"begin" evaluates its args in order returning the value of the last one', ->
   test "One entry", ->
-    evalScheem(
-      [ 'begin'
-        [ 'define', 'a', 2 ] ]
-      this.env
+    assert.evalsTo '(begin (+ 1 2))', 3
+  test "Two forms", ->
+    assert.evalsTo(
+      """
+      (begin
+        (define a 1)
+        (+ a 2))
+      """
+      3
     )
-    assert.deepEqual this.env, {'a': 2}
-
-  test "Two cmnds", ->
-    evalScheem(
-      [ 'begin'
-        [ 'define', 'a', 2 ]
-        [ 'define', 'b', 3 ]
-      ]
-      this.env
+  test "Three forms, why not?", ->
+    assert.evalsTo(
+      """
+      (begin
+        (define a 1)
+        (define b (+ a 1))
+        (+ a b))
+      """
+      3
     )
-    assert.deepEqual this.env, {'a': 2, 'b': 3}
-
-  test "returns value of last expr", ->
-    assert.deepEqual(
-      evalScheem(
-        [ 'begin'
-          [ 'define', 'a', 2 ]
-          [ 'define', 'b', 3 ]
-          [ '+', 'a', 'b']
-        ]
-        this.env
-      )
-      5
-    )
-    assert.deepEqual this.env, {'a': 2, 'b': 3}
-
 
 suite "Comparison and equality", ->
   expectations = [
-    ['<', 1, 2, '#t']
-    ['<', 2, 1, '#f']
-    ['<', 1, 1, '#f']
-    ['=', 1, 2, '#f']
-    ['=', 2, 1, '#f']
-    ['=', 1, 1, '#t']
+    ["(< 1 2)", true]
+    ["(< 2 1)", false]
+    ["(< 1 1)", false]
+    ["(= 1 2)", false]
+    ["(= 2 1)", false]
+    ["(= 1 1)", true]
   ]
 
   for expectation in expectations
-    [op, arg1, arg2, res] = expectation
-    test "(#{op} #{arg1} #{arg2}) => #{res}", ->
-      assert.equal(
-        evalScheem expectation[0..2], {}
-        res
-      )
-
-    test "evalScheemString('(#{op} #{arg1} #{arg2})') -> #{res}", ->
-      assert.equal(
-        evalScheemString("(#{op} #{arg1} #{arg2})", {})
-        res
-      )
-
-
+    [expr, val] = expectation
+    test "#{expr} => #{printScheem val}", ->
+      assert.evalsTo(expr, val)
 
 suite "printScheem", ->
   test "number", ->
@@ -192,22 +163,13 @@ suite "printScheem", ->
 suite "Consing stuff up", ->
   table = [
     [[1, []], [1]]
-    [[['quote', 'a'], []], ['a']]
+    [[[__('quote'), __('a')], []], [__('a')]]
     [[1, ['quote', [2,3]]], [1,2,3]]
   ]
 
-  for expectation in table
-    [[car, cdr], res] = expectation
-    test "#{printScheem(['cons', car, cdr])} => #{printScheem(res)}", ->
-      assert.deepEqual(
-        evalScheem ['cons', car, cdr], {}
-        res
-      )
-    test "evalString(#{printScheem(['cons', car, cdr])}) => #{printScheem(res)}", ->
-      assert.deepEqual(
-        evalScheemString(printScheem(['cons', car, cdr], {}))
-        res
-      )
+  testEval "(cons 1 ())", [1]
+  testEval "(cons 'a ())", [__ 'a']
+  testEval "(cons 1 (list 2 3))", [1,2,3]
 
 suite "Car and cdr", ->
   table = [
@@ -232,42 +194,32 @@ suite "Car and cdr", ->
 
 suite "If", ->
   tests = [
-    [ '#t',       true  ]
-    [ '#f',       false ]
-    [ ['=', 1, 1], true ]
-    [ ['=', 1, 0], false ]
-    [ ['<', 1, 1], false ]
-    [ ['<', 1, 0], false ]
-    [ ['<', 0, 1], true ]
+    [ '#t',      true  ]
+    [ '#f',      false ]
+    [ "(= 1 1)", true ]
+    [ "(= 1 0)", false ]
+    [ "(< 1 1)", false ]
+    [ "(< 1 0)", false ]
+    [ "(< 0 1)", true ]
   ]
 
   for expectation in tests
     [ cond, exp ] = expectation
-    test "(if #{printScheem cond} 1 0) => #{exp}", ->
-      env = {}
+    test "(if #{cond} 1 0) => #{exp}", ->
+      env = theGlobalEnv.extendWith({})
       res = evalScheemString(
         "(if #{printScheem cond} (define true 1) (define false 1))"
         env
       )
       assert.equal res, 0
+      console.log env
       # Should only eval the selected expr
       if exp
-        assert.equal env['true'], 1
-        assert.ok !env.hasOwnProperty('false')
+        assert.equal env.lookup('true'), 1
+        expect(-> env.lookup('false')).to.throw()
       else
         assert.equal env['else'], 1
         assert.ok !env.hasOwnProperty('true')
-
-assert.evalsTo = (src, exp, env) ->
-  env ?= {}
-  assert.deepEqual(
-    evalScheemString(src, env)
-    exp
-  )
-
-delayedEval = (expr, env) ->
-  env ?= {}
-  -> evalScheemString(expr, env)
 
 suite "Parse + Interpret", ->
   suite "Numerics", ->
@@ -281,16 +233,16 @@ suite "Parse + Interpret", ->
       assert.equal evalScheemString("5.5", {}), 5.5
 
   suite "Self-eval", ->
-    test '#t', ->
-      assert.equal evalScheemString('#t', {}), '#t'
-    test '()', ->
-      assert.evalsTo('()', [])
+    testEval '#t', true
+    testEval '()', []
+    testEval '10', 10
+    suite "Strings", ->
+      testEval '"String"', 'String'
+      testEval '"Embedded \\"string\\""', 'Embedded "string"'
 
   suite "Quote", ->
-    test "'quoted", ->
-      assert.deepEqual evalScheemString("'quoted", {}), 'quoted'
-    test "'(a b c)", ->
-      assert.deepEqual evalScheemString("'(a b c)", {}), ['a', 'b', 'c']
+    testEval "'quoted", __('quoted')
+    testEval "'(a b c)", [__('a'), __('b'), __('c')]
 
   suite "Arithmetic", ->
     test "1", ->
@@ -299,9 +251,9 @@ suite "Parse + Interpret", ->
   suite "Environment manipulation", ->
     suite "define", ->
       test "(define a 2) sets a", ->
-        env = {}
+        env = theGlobalEnv.extendWith({})
         evalScheemString('(define a 2)', env)
-        assert.equal env.a, 2
+        assert.equal env.lookup('a'), 2
       test "Redefinition is ok...", ->
         assert.evalsTo "(begin (define a 2) (define a 3) a)", 3
       test "(define a 2 3) is invalid", ->

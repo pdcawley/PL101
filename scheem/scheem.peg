@@ -1,7 +1,7 @@
 start =
    expression:expression _ { return expression }
 
-expression = number / atom / quotedexpression / seq
+expression = number / string / atom / quotedexpression / seq
 
 quotedexpression =
   _ "'" expression:expression { return [ "quote", expression ] }
@@ -10,7 +10,7 @@ seq = _ "(" _ expression:expression* _ ")" { return expression }
 
 validchar = [0-9a-zA-Z_?!+\-=@#$%^&*</.]
 
-atom = _ chars:validchar+ { return chars.join(""); }
+atom = _ chars:validchar+ { return { tokenType: 'symbol', value: chars.join("")}; }
 
 _ = (newline / space / comment)*
 
@@ -20,10 +20,67 @@ newline = "\n" / "\r\n" / "\r"
 
 comment = ";;" (!newline .)* { return column === 1 ? [] : null }
 
-number = _ parts:(intPart decimalPart?) { return parseFloat(parts.join('')) }
+/* Lifted wholesale from the PEG.js example grammar */
+string "string"
+  = _ '"' '"'             { return "";    }
+  / _ '"' chars:chars '"' { return chars; }
 
-sign = sign:('-' / '+') { return sign[0] }
-intPart = sign:sign? intPart:simpleNumber { return sign + intPart }
-decimalPart = '.' decimalPart:simpleNumber { return '.' + decimalPart }
+chars
+  = chars:char+ { return chars.join(""); }
 
-simpleNumber = digits:[0-9]+ { return digits.join('') }
+char
+  // In the original JSON grammar: "any-Unicode-character-except-"-or-\-or-control-character"
+  = [^"\\\0-\x1F\x7f]
+  / '\\"'  { return '"';  }
+  / "\\\\" { return "\\"; }
+  / "\\/"  { return "/";  }
+  / "\\b"  { return "\b"; }
+  / "\\f"  { return "\f"; }
+  / "\\n"  { return "\n"; }
+  / "\\r"  { return "\r"; }
+  / "\\t"  { return "\t"; }
+  / "\\u" h1:hexDigit h2:hexDigit h3:hexDigit h4:hexDigit {
+      return String.fromCharCode(parseInt("0x" + h1 + h2 + h3 + h4));
+    }
+
+number "number"
+  = _ int_:int frac:frac exp:exp { return parseFloat(int_ + frac + exp); }
+  / _ int_:int frac:frac         { return parseFloat(int_ + frac);       }
+  / _ int_:int exp:exp           { return parseFloat(int_ + exp);        }
+  / _ int_:int                   { return parseFloat(int_);              }
+
+int
+  = digit19:digit19 digits:digits     { return digit19 + digits;       }
+  / digit:digit
+  / "-" digit19:digit19 digits:digits { return "-" + digit19 + digits; }
+  / "-" digit:digit                   { return "-" + digit;            }
+  / "+" digit19:digit19 digits:digits { return digit19 + digits;       }
+  / "+" digit:digit                   { return digit;                  }
+
+frac
+  = "." digits:digits { return "." + digits; }
+
+exp
+  = e:e digits:digits { return e + digits; }
+
+digits
+  = digits:digit+ { return digits.join(""); }
+
+e
+  = e:[eE] sign:[+-]? { return e + sign; }
+
+/*
+ * The following rules are not present in the original JSON gramar, but they are
+ * assumed to exist implicitly.
+ *
+ * FIXME: Define them according to ECMA-262, 5th ed.
+ */
+
+digit
+  = [0-9]
+
+digit19
+  = [1-9]
+
+hexDigit
+  = [0-9a-fA-F]

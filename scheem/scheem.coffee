@@ -17,31 +17,45 @@ throwBadArity = (expr) ->
 
 theNullEnvironment =
   lookup: (symbol) ->
-    throw new Error "reference to an identifier before its definition: #{symbol}"
+    throw new Error "reference to an identifier before its definition: #{unintern symbol}"
   isDefined: (symbol) -> false
   set: (symbol) ->
-    throw new Error "cannot set variable before its definition: #{symbol}"
+    throw new Error "cannot set variable before its definition: #{unintern symbol}"
+
+unintern = (symbol) -> if isSymbol symbol then symbol.value else symbol
+intern = (symbol) ->
+  if isSymbol symbol then symbol
+  else
+    tokenType: 'symbol'
+    value: symbol
 
 class Environment
   constructor: (@parent) ->
     @frame = {}
   lookup: (symbol) ->
-    if @frame[symbol]?
-      @frame[symbol]
+    key = unintern symbol
+    if @frame[key]?
+      @frame[key]
     else
-      @parent.lookup(symbol)
-  isDefined: (symbol) -> @frame[symbol]? || @parent.isDefined(symbol)
+      @parent.lookup(key)
+  isDefined: (symbol) ->
+    key = unintern symbol
+    @frame[key]? || @parent.isDefined(key)
   set: (symbol, value) ->
-    if @frame[symbol]?
-      @frame[symbol] = value
+    key = unintern symbol
+    if @frame[key]?
+      @frame[key] = value
     else
-      @parent.set(symbol)
+      @parent.set(key)
   define: (symbol, value) ->
-    @frame[symbol] = value
+    @frame[unintern symbol] = value
   extend: () -> new Environment this
   extendWith: (frame) ->
     ret = new Environment this
-    ret.frame = frame
+    normedFrame = {}
+    for key, value of frame
+      normedFrame[unintern key] = value
+    ret.frame = normedFrame
     return ret
 
 assertArity = (expr, requiredArity) ->
@@ -60,18 +74,15 @@ specialForms =
     checkSyntax: (expr) -> assertArity expr, 2
     evaluate: ([ident, val], env) ->
       unless canSet(env, ident)
-        throw new Error "set!: cannot set variable before its definition: #{ident}"
+        throw new Error "set!: cannot set variable before its definition: #{unintern ident}"
       setVar env, ident, _eval(val, env)
       return 0
   'if':
     checkSyntax: (expr) -> assertArity expr, 3
     evaluate: ([test, ifClause, elseClause], env) ->
       testResult = _eval(test, env)
-      if testResult == '#t' then _eval(ifClause, env)
-      else if testResult = '#f' then _eval(elseClause, env)
-      else
-        throw new Error "#{printScheem test} must return a Boolean in " +
-        "#{printScheem ['if', test, ifClause, elseClause]}"
+      if testResult then _eval(ifClause, env)
+      else _eval(elseClause, env)
   'begin':
     evaluate: (exprs, env) ->
       retval = _eval(expr, env) for expr in exprs
@@ -86,7 +97,7 @@ specialForms =
       [argl, body...] = expr
       func = (args...) ->
         af = {};
-        af[argl[i]] = val for val, i in args
+        af[argl[i].value] = val for val, i in args
         activationEnv = env.extendWith(af)
         retval = _eval(expr, activationEnv) for expr in body
         return retval
@@ -94,9 +105,21 @@ specialForms =
       return func
 
 functions =
-  '+': (x, y) -> x + y
-  '<': (x, y) -> if x < y then '#t' else '#f'
-  '=': (x, y) -> if x == y then '#t' else '#f'
+  '+': (args...) -> r = 0; r += n for n in args; r
+  '-': (x, ys...) -> r = x; r -= y for y in ys; r
+  '*': (args...) -> r = 1; r *= n for n in args; r
+  '/': (x, ys...) ->
+    if ys.length
+      r = x
+      r /= y for y in ys;
+      r
+    else
+      1 / x
+  'list': (list...) -> list
+  'reverse': (list) -> list.reverse()
+  '<': (x, y) -> x < y
+  '=': (x, y) -> x == y
+  'not': (x) -> not x
   cons: (h, t) -> [h, t...]
   car: (list) -> list[0]
   cdr: (list) -> list[1...]
@@ -112,7 +135,7 @@ _apply = (func, exprs, env) ->
   func( (_eval(expr, env) for expr in exprs)... )
 
 
-exports.theGlobalEnv = new Environment theNullEnvironment
+exports.theGlobalEnv = theGlobalEnv = new Environment theNullEnvironment
 theGlobalEnv.frame = functions
 
 # lookup = (env, symbol) -> env[symbol]
@@ -127,20 +150,27 @@ addVar = (env, symbol, value) -> env.define(symbol, value)
 
 fixupEnv = (env) ->
   return theGlobalEnv unless env?
-  if env.constructor.name == Environment then env
+  if env.constructor.name == 'Environment' then env
   else
     theGlobalEnv.extendWith(env)
 
 exports.evalScheem = evalScheem = (expr, env) -> _eval expr, fixupEnv(env)
 
+isSymbol = (expr) ->
+  expr.constructor.name == 'Object' &&
+  expr.tokenType == 'symbol'
+
 _eval = (expr, env) ->
   if typeof expr == 'number' then return expr
-  else if typeof expr == 'string'
-    switch expr
-      when '#t', '#f' then expr
-      else lookup env, expr
+  else if typeof expr == 'string' then return expr
+  else if isSymbol expr
+    switch expr.value
+      when '#t' then true
+      when '#f' then false
+      else
+        lookup env, expr
   else if expr.length == 0 then []
-  else if sf = specialForms[expr[0]]
+  else if sf = specialForms[unintern expr[0]]
     [key, exprs...] = expr
     sf.checkSyntax(expr) if sf.checkSyntax
     sf.evaluate(exprs, env)
@@ -151,17 +181,19 @@ exports.printScheem = printScheem = (expr) ->
   switch typeof expr
     when 'undefined' then "*undef*"
     when 'number', 'string' then "#{expr}"
-    when 'true'
+    when 'boolean'
       if expr then '#t'
       else         '#f'
     else
+      if isSymbol(expr)
+        return expr.value
       switch expr.constructor.name
         when 'Array'
           "(" +
           (printScheem(i) for i in expr).join(' ') +
           ")"
         when 'Function'
-          expr.key ? '#<procedure>'
+          expr.value ? expr.key ? '#<procedure>'
         else "unknown construct, punting to javascript: #{expr}"
 
 exports.evalScheemString = evalScheemString = (src, env) ->
