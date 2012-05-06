@@ -34,6 +34,13 @@ testEval = (expr, res, env) ->
   test "#{expr} -> #{printScheem res}", ->
     assert.evalsTo expr, res, env ? {}
 
+ok = (expr, env) ->
+  testEval expr, true, env
+
+check = (desc, forms...) ->
+  suite desc, ->
+    ok form for form in forms
+
 
 __ = (string) ->
   tokenType: 'symbol'
@@ -212,7 +219,6 @@ suite "If", ->
         env
       )
       assert.equal res, 0
-      console.log env
       # Should only eval the selected expr
       if exp
         assert.equal env.lookup('true'), 1
@@ -272,3 +278,41 @@ suite "Parse + Interpret", ->
         expect(delayedEval "(set! a 3 2)", {}).to.throw(
           'set!: bad syntax (has 3 parts after the keyword) in: (set! a 3 2)'
         )
+
+suite "Supplied functions", ->
+  suite 'null?', ->
+    ok "(null? '())"
+    ok "(not (null? '(1 2)))"
+    ok '(not (null? "string"))'
+    ok "(not (null? 10))"
+
+  suite 'string?', ->
+    ok '(string? "string")'
+    ok '(not (string? \'symbol))'
+
+  suite 'pair?', ->
+    ok "(pair? (list 1 2 3))"
+    ok "(pair? '(1))"
+    ok "(not (pair? ()))"
+    ok "(not (pair? 'atom))"
+    ok "(not (pair? pair?))"
+    ok "(not (pair? 10))"
+
+  check(
+    "number?"
+    "(number? 10)"
+    "(not (number? \"string\"))"
+    "(not (number? 'a))"
+    "(not (number? ()))"
+    "(not (number? (list 1 2 3)))"
+  )
+
+  suite "list manipulation", ->
+    testEval "(list 1 2 3)",                        [1,2,3]
+    testEval "(reverse (list 3 2 1))",              [1,2,3]
+    testEval "(append (list 1) (list 2 3))",        [1,2,3]
+    testEval "(append (list 1) (list 2) (list 3))", [1,2,3]
+
+  suite "caar, etc", ->
+    testEval "(cddr (list 1 2 3))", [3]
+    testEval "(caddr (list 1 2 3))", 3

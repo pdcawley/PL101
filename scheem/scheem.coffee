@@ -115,11 +115,16 @@ functions =
       r
     else
       1 / x
+  'append': (list, lists...) -> list.concat(lists...)
   'list': (list...) -> list
   'reverse': (list) -> list.reverse()
   '<': (x, y) -> x < y
   '=': (x, y) -> x == y
   'not': (x) -> not x
+  'number?': (n) -> typeof(n) == 'number'
+  'string?': (s) -> typeof(s) == 'string'
+  'pair?': (l) -> l.constructor.name == 'Array' and l.length > 0
+  'null?': (l) -> l.constructor.name == 'Array' and l.length == 0
   cons: (h, t) -> [h, t...]
   car: (list) -> list[0]
   cdr: (list) -> list[1...]
@@ -160,6 +165,18 @@ isSymbol = (expr) ->
   expr.constructor.name == 'Object' &&
   expr.tokenType == 'symbol'
 
+make_c_splat_r = (expr, env) ->
+  env ?= theGlobalEnv
+  actions = expr.match(/c([ad]+)/)[1].split('').reverse()
+  env.define(
+    expr
+    (l) ->
+      ret = l
+      for action in actions
+        ret = if action == 'a' then ret[0] else ret[1...]
+      return ret
+  )
+
 _eval = (expr, env) ->
   if typeof expr == 'number' then return expr
   else if typeof expr == 'string' then return expr
@@ -168,6 +185,8 @@ _eval = (expr, env) ->
       when '#t' then true
       when '#f' then false
       else
+        if expr.value.match(/^c[ad]+r/) and not env.isDefined expr
+          make_c_splat_r unintern expr
         lookup env, expr
   else if expr.length == 0 then []
   else if sf = specialForms[unintern expr[0]]
