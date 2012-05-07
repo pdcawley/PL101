@@ -18,6 +18,8 @@ renderExpr = (expr) ->
       $("<span class='scheem-boolean'>").text( #
         if expr then '#t' else '#f'
       )
+    when 'string'
+      $("<span class='scheem-string'>\"#{expr}\"</span>")
     else
       if SU.isSymbol expr
         symbol = unintern expr
@@ -69,9 +71,9 @@ renderArgL = (args, target) ->
 
 renderInExprList = (f) ->
   el = $("<span class='scheem-expr'>")
-  el.append '('
+  el.append $('<span class="scheem-lparen">(</span>')
   f el
-  el.append ')'
+  el.append $('<span class="scheem-lparen">)</span>')
 
 
 compileAndRun = (src) ->

@@ -1,0 +1,147 @@
+$zenburn-fg: #dcdccc;
+$zenburn-bg: #3f3f3f;
+$zenburn-bg_1: #4f4f4f;
+$zenburn-bg_2: #5f5f5f;
+$zenburn-yellow: #f0dfaf;
+$zenburn-yellow-1: #e0cf9f;
+$zenburn-yellow-2: #d0bf8f;
+$zenburn-orange: #dfaf8f;
+$zenburn-red_1: #dca3a3;
+$zenburn-red: #cc9393;
+$zenburn-red-1: #bc8383;
+$zenburn-red-2: #ac7373;
+$zenburn-red-3: #9c6363;
+$zenburn-red-4: #8c5353;
+$zenburn-green-1: #5f7f5f;
+$zenburn-green: #7f9f7f;
+$zenburn-green_1: #8fb28f;
+$zenburn-green_2: #9fc59f;
+$zenburn-green_3: #afd8af;
+$zenburn-green_4: #bfebbf;
+$zenburn-blue_1: #94bff3;
+$zenburn-blue: #8cd0d3;
+$zenburn-blue-1: #7cb8bb;
+$zenburn-blue-2: #6ca0a3;
+$zenburn-blue-3: #5c888b;
+$zenburn-blue-4: #4c7073;
+$zenburn-cyan: #93e0e3;
+
+@mixin zenburn-default {
+    background-color: $zenburn-bg;
+    color: $zenburn-fg;
+}
+
+@mixin zenburn-background-1 {
+    background-color: $zenburn-bg_1;
+}
+
+@mixin zenburn-background-2 {
+    background-color: $zenburn-bg_2;
+}
+
+@mixin zenburn-primary-1 {
+    color: $zenburn-yellow;
+    font-weight: bold;
+}
+
+@mixin zenburn-primary-2 {
+    color: $zenburn-orange;
+    font-weight: bold;
+}
+
+@mixin zenburn-primary-3 {
+    color: #dfdfbf;
+    font-weight: bold;
+}
+
+@mixin zenburn-primary-4 {
+    color: #dca3a3;
+    font-weight: bold;
+}
+
+@mixin zenburn-primary-5 {
+    color: #94bff3;
+    font-weight: bold;
+}
+
+@mixin zenburn-highlight-damp {
+    color: #88b090;
+    background-color: #2e3330;
+}
+
+@mixin zenburn-highlight-alerting {
+    background-color: #2e3330;
+}
+
+@mixin zenburn-highlight-subtle {
+    background-color: #464646;
+}
+
+@mixin zenburn-lowlight-1 {
+    color: #606060;
+}
+
+@mixin zenburn-lowlight-2 {
+    color: #708070;
+}
+
+@mixin zenburn-yellow {
+    color: $zenburn-yellow;
+}
+
+@mixin zenburn-orange {
+    color: $zenburn-orange;
+}
+
+@mixin zenburn-red {
+    color: $zenburn-red;
+}
+
+@mixin zenburn-green-1 {
+    color: $zenburn-green-1;
+}
+
+@mixin zenburn-green {
+    color: $zenburn-green;
+}
+
+@mixin zenburn-green_1 {
+    color: $zenburn-green_1;
+}
+
+@mixin zenburn-green_2 {
+    color: $zenburn-green_2;
+}
+
+@mixin zenburn-green_3 {
+    color: $zenburn-green_3;
+}
+
+@mixin zenburn-green_4 {
+    color: $zenburn-green_4;
+}
+
+@mixin zenburn-blue {
+    color: $zenburn-blue;
+}
+
+@mixin zenburn-blue-1 {
+    color: $zenburn-blue-1;
+}
+
+@mixin zenburn-blue-2 {
+    color: $zenburn-blue-2;
+}
+
+@mixin zenburn-blue-3 {
+    color: $zenburn-blue-3;
+}
+
+@mixin zenburn-blue-4 {
+    color: $zenburn-blue-4;
+}
+
+@mixin zenburn-title {
+    font-style: normal;
+    font-weight: bold;
+}
