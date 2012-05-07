@@ -39,9 +39,15 @@ renderExpr = (expr) ->
 
 renderSpecialForm = (expr) ->
   [specialForm, exprs...] = expr
-  renderInExprList (el) ->
-    el.append $("<span class='scheem-special-form'>").text(unintern specialForm)
-    renderArgL exprs, el
+  switch unintern specialForm
+    when 'quote'
+      el = $("<span class='scheem-quoted-expr'>" +
+             "<span class='scheem-quote'>'</span></span>")
+      el.append renderExpr exprs[0]
+    else
+      renderInExprList (el) ->
+        el.append $("<span class='scheem-special-form'>").text(unintern specialForm)
+        renderArgL exprs, el
 
 renderApplication = (expr) ->
   [func, args...] = expr
