@@ -46,6 +46,40 @@ __ = (string) ->
   tokenType: 'symbol'
   value: string
 
+
+check("Function definitions"
+  "(begin
+    (define add1 (lambda (n) (+ n 1)))
+    #t)"
+  "(begin (define add1 (lambda (n) (+ 1 n))) (= (add1 2) 3))"
+  "(= ((lambda (n) (+ 1 n)) 2) 3)"
+  "(begin
+    (define compose (lambda (f g) (lambda (arg) (f (g arg)))))
+    (= ((compose car cdr) (list 1 2 3)) 2))"
+  "(begin
+    (define it 99)
+    (define shadow (lambda (arg) (define it (+ 27 arg)) it))
+    (shadow 3)
+    (if (= (shadow 3) 30)
+      (= it 99)
+      #f))"
+  "(begin
+    (define count 0)
+    (define call-counter
+      (lambda ()
+        (set! count (+ count 1))
+        count))
+    (call-counter)
+    (call-counter)
+    (= count 2))"
+  "(begin
+    (define make-adder
+      (lambda (n)
+        (lambda (i) (+ n i))))
+    (define add2 (make-adder 2))
+    (= (add2 1) 3))"
+)
+
 suite "Lambda", ->
   test "((lambda () 1)) -> 1", ->
     assert.evalsTo("((lambda () 1))", 1)

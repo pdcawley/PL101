@@ -46,7 +46,7 @@ class Environment
     if @frame[key]?
       @frame[key] = value
     else
-      @parent.set(key)
+      @parent.set(key, value)
   define: (symbol, value) ->
     @frame[unintern symbol] = value
   extend: () -> new Environment this
@@ -128,6 +128,9 @@ functions =
   cons: (h, t) -> [h, t...]
   car: (list) -> list[0]
   cdr: (list) -> list[1...]
+  alert: (arg) ->
+    (alert ? console.log)(unintern arg)
+    arg
 
 func.key = key for key, func of functions
 
