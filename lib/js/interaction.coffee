@@ -39,24 +39,33 @@ renderExpr = (expr) ->
 
 renderSpecialForm = (expr) ->
   [specialForm, exprs...] = expr
-  el = $("<span class='scheem-expr'>")
-  el.append $("<span class='scheem-special-form'>").text(unintern specialForm)
-  el.append renderExpr expr for expr in exprs
-  return el
+  renderInExprList (el) ->
+    el.append $("<span class='scheem-special-form'>").text(unintern specialForm)
+    renderArgL exprs, el
 
 renderApplication = (expr) ->
   [func, args...] = expr
-  el = $("<span class='scheem-expr'>")
-  funcEl =
-    if SU.isSymbol func
-      $("<span class='scheem-funcname'>")
-        .text(unintern func).data('name', unintern func)
-    else
-      renderExpr func
-  el.append funcEl
-  el.append renderExpr arg for arg in args
-  return el
+  renderInExprList (el) ->
+    funcEl =
+      if SU.isSymbol func
+        $("<span class='scheem-funcname'>")
+          .text(unintern func).data('name', unintern func)
+      else
+        renderExpr func
+    el.append funcEl
+    renderArgL args, el
 
+renderArgL = (args, target) ->
+  for arg in args
+    target.append '&ensp;'
+    target.append renderExpr arg
+  return target
+
+renderInExprList = (f) ->
+  el = $("<span class='scheem-expr'>")
+  el.append '('
+  f el
+  el.append ')'
 
 
 compileAndRun = (src) ->
