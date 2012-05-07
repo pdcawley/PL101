@@ -1,2 +1,3 @@
 lib/js/*.js
+lib/css/*.css
 .sass-cache

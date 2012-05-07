@@ -70,9 +70,17 @@ specialForms =
     checkSyntax: (expr) -> assertArity expr, 1
     evaluate: ([expr]) -> expr
   define:
-    checkSyntax: (expr) -> assertArity expr, 2
-    evaluate: ([ident, val], env) ->
-      addVar env, ident, _eval(val, env)
+    checkSyntax: (expr) ->
+      unless expr[1].constructor.name == 'Array'
+        assertArity expr, 2
+    evaluate: (exprs, env) ->
+      if exprs[0].constructor.name == 'Array'
+        [[ident, argl...], body...] = exprs
+        func = _eval(['lambda', argl, body...], env)
+        func.key = unintern ident
+        addVar env, ident, func
+      else
+        addVar env, exprs[0], _eval(exprs[1], env)
       return 0
   'set!':
     checkSyntax: (expr) -> assertArity expr, 2
@@ -107,6 +115,15 @@ specialForms =
         return retval
       func.arity = argl.length
       return func
+  'cond':
+    evaluate: (exprs, env) ->
+      for clause in exprs
+        [cond, body...] = clause
+        isElseClause = isSymbol(cond) && unintern(cond) == 'else'
+        if isElseClause || _eval(cond, env)
+          return _eval [ 'begin', body... ], env
+      throw new Error "Reached the end of the clauses and nothing came true in: " +
+        printScheem [ 'cond', exprs... ]
 
 functions =
   '+': (args...) -> r = 0; r += n for n in args; r

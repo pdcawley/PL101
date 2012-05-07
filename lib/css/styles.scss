@@ -50,8 +50,9 @@ pre {
   left: 0;
   right: 0;
   display: none;
-  color: #900;
+  @include zenburn-highlight-alerting;
 }
+
 #actions {
   clear: both;
   padding: 1em 1em;
