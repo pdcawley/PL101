@@ -8,6 +8,10 @@ else
   exports = window
   exports.parse = parse = SCHEEM.parse
 
+exports.ScheemUtils = {}
+
+SU = exports.ScheemUtils
+
 throwBadArity = (expr) ->
   [form, parts...] = expr;
   throw new Error(
@@ -22,8 +26,8 @@ theNullEnvironment =
   set: (symbol) ->
     throw new Error "cannot set variable before its definition: #{unintern symbol}"
 
-unintern = (symbol) -> if isSymbol symbol then symbol.value else symbol
-intern = (symbol) ->
+SU.unintern = unintern = (symbol) -> if isSymbol symbol then symbol.value else symbol
+SU.intern = intern = (symbol) ->
   if isSymbol symbol then symbol
   else
     tokenType: 'symbol'
@@ -164,7 +168,7 @@ fixupEnv = (env) ->
 
 exports.evalScheem = evalScheem = (expr, env) -> _eval expr, fixupEnv(env)
 
-isSymbol = (expr) ->
+SU.isSymbol = isSymbol = (expr) ->
   expr.constructor.name == 'Object' &&
   expr.tokenType == 'symbol'
 
@@ -218,5 +222,19 @@ exports.printScheem = printScheem = (expr) ->
           expr.value ? expr.key ? '#<procedure>'
         else "unknown construct, punting to javascript: #{expr}"
 
+SU.isSpecialForm = (symbol) -> specialForms[unintern symbol]?
+SU.isBound = (symbol, env) -> env.isDefined(symbol)
+
 exports.evalScheemString = evalScheemString = (src, env) ->
   evalScheem(parse(src), env)
+
+exports.evalScheemProgram = (src, env) ->
+  programEnv = fixupEnv env
+  exprs = parse src, 'program'
+  results = (_eval expr, programEnv for expr in exprs)
+  return(
+    allResults: results
+    result: results[results.length - 1]
+    env: programEnv
+    parseTree: exprs
+  )

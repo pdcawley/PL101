@@ -1,0 +1,66 @@
+#results section {
+    margin: 0.4em;
+    white-space: pre;
+}
+
+#results,
+pre {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+#results {
+  min-height: 302px;
+  overflow: auto;
+  border-left-width: 1px;
+  border-left-style: solid;
+  background-color: #f7f7f7;
+}
+
+#live-code {
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+}
+
+h2.subtitle {
+  margin-top: -16px;
+  font-size: small;
+  text-indent: 1em;
+  font-style: italic;
+  font-weight: normal;
+}
+
+pre {
+  margin-top: 0.75em;
+  padding: 0.4em;
+  cursor: default;
+  -khtml-border-radius: 0.6em 0.6em 0.6em 0.6em;
+  -moz-border-radius: 0.6em 0.6em 0.6em 0.6em;
+  -ms-border-radius: 0.6em 0.6em 0.6em 0.6em;
+  -o-border-radius: 0.6em 0.6em 0.6em 0.6em;
+  -webkit-border-radius: 0.6em 0.6em 0.6em 0.6em;
+  border-radius: 0.6em 0.6em 0.6em 0.6em;
+}
+#error {
+  margin: 0 !important;
+  padding: 0.4em;
+  position: relative;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: none;
+  color: #900;
+}
+#actions {
+  clear: both;
+  padding: 1em 1em;
+  text-align: right;
+}
+
+#preview {
+  cursor: default;
+}
+#editor-holder {
+  margin-right: -1px;
+}
