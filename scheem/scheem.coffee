@@ -242,6 +242,8 @@ exports.printScheem = printScheem = (expr) ->
         return expr.value
       switch expr.constructor.name
         when 'Array'
+          if unintern expr[0] == 'quote'
+            return "'" + printScheem expr[1]
           "(" +
           (printScheem(i) for i in expr).join(' ') +
           ")"

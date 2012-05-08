@@ -100,9 +100,27 @@ evalScheemProgram '''
           "Lookup KEY in LIST"
           (cond ((null? list) ())
                 ((= key (caar list)) (cadar list))
-                (else (assoc key (cdr list))))))
+                (else (assoc key (cdr list)))))
+        (define (make-assoc names values)
+          (define (loop l n v)
+            (if (null? n) l
+              (loop (cons (list (car n) (car v)) l)
+                    (cdr n)
+                    (cdr v))))
+          (loop () names values))
+      )
     (is (assoc (quote foo) ()) ())
     (is (assoc (quote foo) (quote ((foo 1)))) 1)
+    (is (assoc (quote foo) (quote ((bar 1) (baz 1)))) ())
+    (is (assoc \'foo \'((bar 1) (foo 2))) 2)
+    (is (make-assoc \'(a b c) \'(1 2 3))
+        \'((c 3) (b 2) (a 1)))
+    (suite "Build and associate"
+        (define assocL (make-assoc \'(a b c d) (list 1 (lambda () \'b) \'c \'(a list))))
+      (is (assoc \'a assocL) 1)
+      (is ((assoc \'b assocL)) \'b)
+      (is (assoc \'c assocL) \'c)
+      (is (assoc \'d assocL) \'(a list)))
   ))
 '''
 
