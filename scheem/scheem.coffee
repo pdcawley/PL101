@@ -125,6 +125,9 @@ specialForms =
       throw new Error "Reached the end of the clauses and nothing came true in: " +
         printScheem [ 'cond', exprs... ]
 
+SU.addSpecialForm = addSpecialForm = (name, generator) ->
+  specialForms[name] = generator _eval
+
 functions =
   '+': (args...) -> r = 0; r += n for n in args; r
   '-': (x, ys...) -> r = x; r -= y for y in ys; r
@@ -152,6 +155,9 @@ functions =
   alert: (arg) ->
     (alert ? console.log)(unintern arg)
     arg
+  intern: (str) -> intern str
+  unintern: (sym) -> unintern sym
+  error: (args...) -> throw new Error args.join('')
 
 func.key = key for key, func of functions
 
@@ -186,8 +192,8 @@ fixupEnv = (env) ->
 exports.evalScheem = evalScheem = (expr, env) -> _eval expr, fixupEnv(env)
 
 SU.isSymbol = isSymbol = (expr) ->
-  expr.constructor.name == 'Object' &&
-  expr.tokenType == 'symbol'
+  expr?.constructor?.name == 'Object' &&
+  expr?.tokenType == 'symbol'
 
 make_c_splat_r = (expr, env) ->
   env ?= theGlobalEnv
@@ -239,7 +245,8 @@ exports.printScheem = printScheem = (expr) ->
           expr.value ? expr.key ? '#<procedure>'
         else "unknown construct, punting to javascript: #{expr}"
 
-SU.isSpecialForm = (symbol) -> specialForms[unintern symbol]?
+SU.isSpecialForm = (symbol) ->
+  specialForms[unintern symbol] ? lookup(symbol)?.isSpecialForm
 SU.isBound = (symbol, env) -> env.isDefined(symbol)
 
 exports.evalScheemString = evalScheemString = (src, env) ->

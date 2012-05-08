@@ -6,6 +6,7 @@ if (typeof module != 'undefined')
   evalScheem = scheem.evalScheem
   printScheem = scheem.printScheem
   evalScheemString = scheem.evalScheemString
+  SU = scheem.ScheemUtils
   parse = scheem.parse
 else
   assert = chai.assert
@@ -13,6 +14,7 @@ else
   evalScheem = window.evalScheem
   printScheem = window.printScheem
   evalScheemString = window.evalScheemString
+  SU = window.ScheemUtils
   parse = window.parse
 
 # suite "Strings", ->
@@ -41,11 +43,42 @@ check = (desc, forms...) ->
   suite desc, ->
     ok form for form in forms
 
+SU.addSpecialForm 'suite', (_eval) ->
+  evaluate: (exprs, outerEnv) ->
+    [name, preamble, checks...] = exprs
+    env = outerEnv.extendWith({})
+    _eval(preamble, env)
+    suite name, ->
+      for check in checks
+        assertion = SU.unintern check[0]
+        innerEnv = env.extendWith({})
+        if assertion == 'is'
+          ((check, env) ->
+            exp = _eval(check[2], env)
+            test "#{printScheem check[1]} -> #{printScheem exp}", ->
+              assert.deepEqual _eval(check[1], env), exp
+          )(check, innerEnv)
+        else if assertion == 'ok'
+          ((check, env) ->
+            test "(ok #{printScheem check[1]})", ->
+              assert.ok _eval check[1], env
+          )(check, env)
+        else
+          ((check, env) -> _eval check, env)(check, innerEnv)
+      return
 
 __ = (string) ->
   tokenType: 'symbol'
   value: string
 
+evalScheemString '''
+(suite "Factorial/cond"
+    (define (factorial n)
+      (cond ((= 0 n) 1)
+            (else (* n (factorial (- n 1))))))
+  (is (factorial 0) 1)
+  (is (factorial 10) (* 10 9 8 7 6 5 4 3 2 1)))
+'''
 
 check("Function definitions"
   "(begin

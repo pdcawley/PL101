@@ -28,7 +28,12 @@ renderExpr = (expr) ->
       else
         switch expr.constructor.name
           when 'Array'
-            if SU.isSpecialForm expr[0] then renderSpecialForm expr
+            if expr.length == 0
+              $("<span class='scheem-quoted-expr'>" +
+                "<span class='scheem-quote'>'</span>" +
+                "<span class='scheem-lparen'>(</span>" +
+                "<span class='scheem-rparen'>)</span></span>")
+            else if SU.isSpecialForm expr[0] then renderSpecialForm expr
             else renderApplication expr
           when Function
             name = expr.value ? expr.key
