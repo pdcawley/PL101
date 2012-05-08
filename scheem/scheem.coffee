@@ -143,7 +143,11 @@ functions =
   'list': (list...) -> list
   'reverse': (list) -> list.reverse()
   '<': (x, y) -> x < y
-  '=': (x, y) -> x == y
+  '=': (x, y) ->
+    if isSymbol(x) and isSymbol(y)
+      unintern(x) == unintern(y)
+    else
+      x == y
   'not': (x) -> not x
   'number?': (n) -> typeof(n) == 'number'
   'string?': (s) -> typeof(s) == 'string'

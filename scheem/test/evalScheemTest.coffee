@@ -67,17 +67,43 @@ SU.addSpecialForm 'suite', (_eval) ->
           ((check, env) -> _eval check, env)(check, innerEnv)
       return
 
+SU.addSpecialForm 'is', (_eval) ->
+  evaluate: (exprs, outerEnv) ->
+    env = outerEnv.extendWith({})
+    expected = _eval exprs[2], env
+    test "#{printScheem exprs[1]} -> #{printScheem expected}", ->
+      assert.deepEqual _eval(exprs[1], env), expected
+
 __ = (string) ->
   tokenType: 'symbol'
   value: string
 
-evalScheemString '''
+evalScheemProgram '''
+(suite "="
+    #t
+  (ok (= 1 1))
+  (ok (= "foo" "foo"))
+  (ok (= 'foo 'foo)))
+
 (suite "Factorial/cond"
     (define (factorial n)
       (cond ((= 0 n) 1)
             (else (* n (factorial (- n 1))))))
   (is (factorial 0) 1)
   (is (factorial 10) (* 10 9 8 7 6 5 4 3 2 1)))
+
+(suite "Environments"
+    #t
+  (suite "Association Lists"
+      (begin
+        (define (assoc key list)
+          "Lookup KEY in LIST"
+          (cond ((null? list) ())
+                ((= key (caar list)) (cadar list))
+                (else (assoc key (cdr list))))))
+    (is (assoc (quote foo) ()) ())
+    (is (assoc (quote foo) (quote ((foo 1)))) 1)
+  ))
 '''
 
 check("Function definitions"
