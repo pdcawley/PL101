@@ -102,7 +102,7 @@ evalScheemProgram '''
         (define (assoc key list)
           "Lookup KEY in LIST"
           (cond ((null? list) ())
-                ((= key (caar list)) (cadar list))
+                ((= key (caar list)) (car list))
                 (else (assoc key (cdr list)))))
         (define (make-assoc names values)
           (define (loop l n v)
@@ -113,9 +113,9 @@ evalScheemProgram '''
           (loop () names values))
       )
     (is (assoc (quote foo) ()) ())
-    (is (assoc (quote foo) (quote ((foo 1)))) 1)
+    (is (assoc (quote foo) (quote ((foo 1)))) \'(foo 1))
     (is (assoc (quote foo) (quote ((bar 1) (baz 1)))) ())
-    (is (assoc \'foo \'((bar 1) (foo 2))) 2)
+    (is (assoc \'foo \'((bar 1) (foo 2))) \'(foo 2))
     (is (make-assoc \'(a b c) \'(1 2 3))
         \'((c 3) (b 2) (a 1)))
     (suite "Build and associate"
@@ -123,11 +123,12 @@ evalScheemProgram '''
           (make-assoc
             \'(a b c d)
             (list 1 (lambda () \'b) \'c \'(a list))))
-      (is (assoc \'a assocL) 1)
-      (is ((assoc \'b assocL)) \'b)
-      (is (assoc \'c assocL) \'c)
-      (is (assoc \'d assocL) \'(a list)))
-  ))
+      (is (assoc \'a assocL) \'(a 1))
+      (is ((cadr (assoc \'b assocL))) \'b)
+      (is (assoc \'c assocL) \'(c c))
+      (is (assoc \'d assocL) \'(d (a list))))
+  )
+)
 '''
 
 check("Function definitions"
