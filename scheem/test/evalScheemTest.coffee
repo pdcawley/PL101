@@ -96,6 +96,15 @@ evalScheemProgram '''
   (is (factorial 0) 1)
   (is (factorial 10) (* 10 9 8 7 6 5 4 3 2 1)))
 
+(suite "cxxxr"
+    (define test-list \'(1 (2 3) (4 5 6) (7 8 9 10)))
+  (is (car test-list) 1)
+  (is (cadr test-list) \'(2 3))
+  (is (caadr test-list) 2)
+  (is (cdadr test-list) \'(3))
+  (is (cadadr test-list) 3)
+)
+
 (suite "Environments inside scheem"
     #t
   (suite "Association Lists"

@@ -95,6 +95,18 @@ specialForms =
       testResult = _eval(test, env)
       if testResult then _eval(ifClause, env)
       else _eval(elseClause, env)
+  'or':
+    evaluate: (exprs, env) ->
+      for expr in exprs
+        ret = _eval expr, env
+        return ret if ret
+  'and':
+    evaluate: (exprs, env) ->
+      ret = true
+      for expr in exprs
+        ret = _eval expr, env
+        return false unless ret
+      return ret
   'begin':
     evaluate: (exprs, env) ->
       retval = _eval(expr, env) for expr in exprs
@@ -143,6 +155,9 @@ functions =
   'list': (list...) -> list
   'reverse': (list) -> list.reverse()
   '<': (x, y) -> x < y
+  '>': (x, y) -> x > y
+  '<=': (x, y) -> x <= y
+  '>=': (x, y) -> x >= y
   '=': (x, y) ->
     if isSymbol(x) and isSymbol(y)
       unintern(x) == unintern(y)
@@ -156,6 +171,9 @@ functions =
   cons: (h, t) -> [h, t...]
   car: (list) -> list[0]
   cdr: (list) -> list[1...]
+  nth: (n, list) -> list[n - 1]
+  'set-car!': (list, newcar) -> list[0] = newcar
+  'set-cdr!': (list, newcdr) -> list[1...] = newcdr
   alert: (arg) ->
     (alert ? console.log)(unintern arg)
     arg
