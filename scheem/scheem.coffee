@@ -258,7 +258,7 @@ SU.isBound = (symbol, env) -> env.isDefined(symbol)
 exports.evalScheemString = evalScheemString = (src, env) ->
   evalScheem(parse(src), env)
 
-exports.evalScheemProgram = (src, env) ->
+exports.evalScheemProgram = evalScheemProgram = (src, env) ->
   programEnv = fixupEnv env
   exprs = parse src, 'program'
   results = (_eval expr, programEnv for expr in exprs)

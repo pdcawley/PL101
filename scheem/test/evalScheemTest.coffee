@@ -6,6 +6,8 @@ if (typeof module != 'undefined')
   evalScheem = scheem.evalScheem
   printScheem = scheem.printScheem
   evalScheemString = scheem.evalScheemString
+  evalScheemProgram = scheem.evalScheemProgram
+  theGlobalEnv = scheem.theGlobalEnv
   SU = scheem.ScheemUtils
   parse = scheem.parse
 else
@@ -14,6 +16,7 @@ else
   evalScheem = window.evalScheem
   printScheem = window.printScheem
   evalScheemString = window.evalScheemString
+  evalScheemProgram = window.evalScheemProgram
   SU = window.ScheemUtils
   parse = window.parse
 
@@ -92,7 +95,7 @@ evalScheemProgram '''
   (is (factorial 0) 1)
   (is (factorial 10) (* 10 9 8 7 6 5 4 3 2 1)))
 
-(suite "Environments"
+(suite "Environments inside scheem"
     #t
   (suite "Association Lists"
       (begin
@@ -116,7 +119,10 @@ evalScheemProgram '''
     (is (make-assoc \'(a b c) \'(1 2 3))
         \'((c 3) (b 2) (a 1)))
     (suite "Build and associate"
-        (define assocL (make-assoc \'(a b c d) (list 1 (lambda () \'b) \'c \'(a list))))
+        (define assocL
+          (make-assoc
+            \'(a b c d)
+            (list 1 (lambda () \'b) \'c \'(a list))))
       (is (assoc \'a assocL) 1)
       (is ((assoc \'b assocL)) \'b)
       (is (assoc \'c assocL) \'c)

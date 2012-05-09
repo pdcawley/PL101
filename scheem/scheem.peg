@@ -1,6 +1,8 @@
 start =
    expression:expression _ { return expression }
 
+program = expressions:expression* _ { return expressions }
+
 expression = number / string / atom / quotedexpression / seq
 
 quotedexpression =
