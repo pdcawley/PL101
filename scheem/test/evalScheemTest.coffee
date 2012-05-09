@@ -17,6 +17,7 @@ else
   printScheem = window.printScheem
   evalScheemString = window.evalScheemString
   evalScheemProgram = window.evalScheemProgram
+  theGlobalEnv = window.theGlobalEnv
   SU = window.ScheemUtils
   parse = window.parse
 
@@ -281,7 +282,7 @@ suite "printScheem", ->
   test "number", ->
     assert.equal printScheem(1), '1'
   test "atom", ->
-    assert.equal printScheem('a'), 'a'
+    assert.equal printScheem('a'), '"a"'
   test "[1,2] => (1 2)", ->
     assert.equal printScheem([1,2]), '(1 2)'
 
@@ -306,14 +307,14 @@ suite "Car and cdr", ->
 
   for expectation in table
     [input, car, cdr] = expectation
-    test "#{printScheem ['car', ['quote', input]]} => #{printScheem car}", ->
+    test "#{printScheem [__('car'), ['quote', input]]} => #{printScheem car}", ->
       assert.deepEqual(
-        evalScheemString printScheem(['car', ['quote', input]]), {}
+        evalScheemString printScheem([__('car'), ['quote', input]]), {}
         car
       )
-    test "#{printScheem ['cdr', ['quote', input]]} => #{printScheem cdr}", ->
+    test "#{printScheem [__('cdr'), ['quote', input]]} => #{printScheem cdr}", ->
       assert.deepEqual(
-        evalScheemString printScheem(['cdr', ['quote', input]]), {}
+        evalScheemString printScheem([__('cdr'), ['quote', input]]), {}
         cdr
       )
 
@@ -333,7 +334,7 @@ suite "If", ->
     test "(if #{cond} 1 0) => #{exp}", ->
       env = theGlobalEnv.extendWith({})
       res = evalScheemString(
-        "(if #{printScheem cond} (define true 1) (define false 1))"
+        "(if #{cond} (define true 1) (define false 1))"
         env
       )
       assert.equal res, 0

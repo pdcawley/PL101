@@ -161,7 +161,8 @@ functions =
     arg
   intern: (str) -> intern str
   unintern: (sym) -> unintern sym
-  error: (args...) -> throw new Error args.join('')
+  error: (args...) ->
+    throw new Error (unintern arg for arg in args).join('')
 
 func.key = key for key, func of functions
 
@@ -233,7 +234,8 @@ _eval = (expr, env) ->
 exports.printScheem = printScheem = (expr) ->
   switch typeof expr
     when 'undefined' then "*undef*"
-    when 'number', 'string' then "#{expr}"
+    when 'number' then "#{expr}"
+    when 'string' then "\"#{expr}\""
     when 'boolean'
       if expr then '#t'
       else         '#f'
