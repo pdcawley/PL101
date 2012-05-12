@@ -271,8 +271,7 @@ exports.printScheem = printScheem = (expr) ->
           expr.value ? expr.key ? '#<procedure>'
         else "unknown construct, punting to javascript: #{expr}"
 
-SU.isSpecialForm = (symbol) ->
-  specialForms[unintern symbol] ? lookup(symbol)?.isSpecialForm
+SU.isSpecialForm = (symbol) -> specialForms[unintern symbol]
 SU.isBound = (symbol, env) -> env.isDefined(symbol)
 
 exports.evalScheemString = evalScheemString = (src, env) ->
