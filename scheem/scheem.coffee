@@ -10,6 +10,9 @@ else
 
 exports.ScheemUtils = {}
 
+scheemTracer = null
+tracing = false
+
 SU = exports.ScheemUtils
 
 throwBadArity = (expr) ->
@@ -136,6 +139,25 @@ specialForms =
           return _eval [ 'begin', body... ], env
       throw new Error "Reached the end of the clauses and nothing came true in: " +
         printScheem [ 'cond', exprs... ]
+  'trace':
+    evaluate: (exprs, env) ->
+      [expr, tracer] = exprs
+      oldScheemTracer = scheemTracer
+      oldTracing = tracing
+      scheemTracer = if tracer?
+        _eval tracer, env, true
+      else
+        (exp, val) -> console.log printScheem(exp), ' => ', printScheem(val)
+      ret = null
+      try
+        tracing = true
+        ret = _eval expr, env
+      catch ex
+        throw ex
+      finally
+        scheemTracer = oldScheemTracer
+        tracing = oldTracing
+        ret
 
 SU.addSpecialForm = addSpecialForm = (name, generator) ->
   specialForms[name] = generator _eval
@@ -170,6 +192,18 @@ functions =
   'null?': (l) -> l.constructor.name == 'Array' and l.length == 0
   cons: (h, t) -> [h, t...]
   car: (list) -> list[0]
+  caar: (list) -> list[0][0]
+  cadr: (list) -> list[1...][0]
+  cdar: (list) -> list[0][1...]
+  cddr: (list) -> list[1...][1...]
+  caaar: (list) -> list[0][0][0]
+  caadr: (list) -> list[1...][0][0]
+  cadar: (list) -> list[0][1...][0]
+  cdaar: (list) -> list[0][0][1...]
+  caddr: (list) -> list[1...][1...][0]
+  cdadr: (list) -> list[1...][0][1...]
+  cddar: (list) -> list[0][1...][1...]
+  cdddr: (list) -> list[1...][1...][1...]
   cdr: (list) -> list[1...]
   nth: (n, list) -> list[n - 1]
   'set-car!': (list, newcar) -> list[0] = newcar
@@ -181,6 +215,8 @@ functions =
   unintern: (sym) -> unintern sym
   error: (args...) ->
     throw new Error (unintern arg for arg in args).join('')
+  breakpoint: (args...) ->
+    console.log args
 
 func.key = key for key, func of functions
 
@@ -230,24 +266,42 @@ make_c_splat_r = (expr, env) ->
       return ret
   )
 
-_eval = (expr, env) ->
-  if typeof expr == 'number' then return expr
-  else if typeof expr == 'string' then return expr
-  else if isSymbol expr
-    switch expr.value
-      when '#t' then true
-      when '#f' then false
-      else
-        if expr.value.match(/^c[ad]+r/) and not env.isDefined expr
-          make_c_splat_r unintern expr
-        lookup env, expr
-  else if expr.length == 0 then []
-  else if sf = specialForms[unintern expr[0]]
-    [key, exprs...] = expr
-    sf.checkSyntax(expr) if sf.checkSyntax
-    sf.evaluate(exprs, env)
-  else
-    _apply _eval(expr[0], env), expr[1...], env
+_eval = (expr, env, skipTrace) ->
+  result = if typeof expr == 'number'
+      expr
+    else if typeof expr == 'string'
+      expr
+    else if isSymbol expr
+      switch expr.value
+        when '#t' then true
+        when '#f' then false
+        else
+          if expr.value.match(/^c[ad]+r/) and not env.isDefined expr
+            make_c_splat_r unintern expr
+          lookup env, expr
+    else if expr.length == 0 then []
+    else if sf = specialForms[unintern expr[0]]
+      [key, exprs...] = expr
+      sf.checkSyntax(expr) if sf.checkSyntax
+      sf.evaluate(exprs, env)
+    else
+      _apply _eval(expr[0], env), expr[1...], env
+  return result unless tracing and not skipTrace
+  if scheemTracer? and not skipTrace
+    switch typeof expr
+      when 'number', 'string'
+        return result
+    if isSymbol(expr)
+      if functions[unintern expr]? or unintern(expr).match(/^c[ad]r$/)
+        return result
+    if expr.constructor.name == 'Array' and expr.length == 0
+      return result
+    try
+      tracing = false
+      scheemTracer expr, result
+    finally
+      tracing = true
+  return result
 
 exports.printScheem = printScheem = (expr) ->
   switch typeof expr

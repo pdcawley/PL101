@@ -83,6 +83,17 @@ __ = (string) ->
   value: string
 
 evalScheemProgram '''
+(suite "trace"
+  #t
+  (suite "simple"
+      (begin
+        (define traces ())
+        (define (tracer expr value)
+          (set! traces (cons (list expr value) traces)))
+        (trace #f tracer))
+    (is traces (list (list \'#f #f))))
+)
+
 (suite "="
     #t
   (ok (= 1 1))
@@ -103,6 +114,13 @@ evalScheemProgram '''
   (is (caadr test-list) 2)
   (is (cdadr test-list) \'(3))
   (is (cadadr test-list) 3)
+)
+
+(suite "not"
+    #t
+  (is (not #t) #f)
+  (is (not #f) #t)
+  (is (not (null? \'())) #f)
 )
 
 (suite "Environments inside scheem"
@@ -137,6 +155,24 @@ evalScheemProgram '''
       (is ((cadr (assoc \'b assocL))) \'b)
       (is (assoc \'c assocL) \'(c c))
       (is (assoc \'d assocL) \'(d (a list))))
+    (suite "Lookup tables"
+        (begin
+          (define (lookup key table fail)
+            (cond ((null? table) (fail))
+                  ((not (null? (assoc key (car table))))
+                   (nth 2 (assoc key (car table))))
+                  (else (lookup key (cdr table) fail))))
+          (define (test-lookup key table) (lookup key table (lambda () "Bad key"))))
+        (is (test-lookup \'key ()) "Bad key")
+        (is (test-lookup \'key \'(((key 10)))) 10)
+        (is (test-lookup \'key \'(((a 99)) ((key 10)))) 10)
+        (is (test-lookup \'key (list (make-assoc \'(a b c) \'(1 2 3))
+                                     (make-assoc \'(d e f) \'(9 10 11))))
+            "Bad key")
+        (is (test-lookup \'f (list (make-assoc \'(a b c) \'(1 2 3))
+                                   (make-assoc \'(d e f) \'(9 10 11))))
+            11)
+    )
   )
 )
 '''
