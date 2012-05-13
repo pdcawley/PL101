@@ -41,6 +41,7 @@ pre {
   -webkit-border-radius: 0.6em 0.6em 0.6em 0.6em;
   border-radius: 0.6em 0.6em 0.6em 0.6em;
 }
+
 #error {
   margin: 0 !important;
   padding: 0.4em;
@@ -50,7 +51,6 @@ pre {
   left: 0;
   right: 0;
   display: none;
-  @include zenburn-highlight-alerting;
 }
 
 #actions {
@@ -69,6 +69,20 @@ pre {
 @mixin constant { @include zenburn-primary-4; }
 @mixin symbol { @include zenburn-yellow }
 @mixin function-name { @include zenburn-yellow }
+
+#results.alert-error {
+    @include zenburn-highlight-alerting
+}
+#results.alert-success {
+    @include zenburn-highlight-subtle
+}
+
+#results {
+    @include zenburn-default;
+}
+
+#results.alert-error,
+#results.alert-success,
 #results {
     .scheem-number, .scheem-boolean {
         @include constant;
@@ -84,4 +98,26 @@ pre {
     .scheem-string { @include zenburn-red; }
     .scheem-lparen,
     .scheem-rparen { @include zenburn-lowlight-1; }
+}
+
+#preview, #trace, #results {
+    p { margin-bottom: 0; }
+}
+
+code {
+    font: monospace;
+}
+
+body {
+    padding-left: 1em;
+}
+
+#live-code {
+    margin-left: -1em;
+}
+
+#examples {
+    .source code {
+        white-space: pre;
+    }
 }

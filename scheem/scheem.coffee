@@ -35,6 +35,9 @@ SU.intern = intern = (symbol) ->
   else
     tokenType: 'symbol'
     value: symbol
+SU.defaultTracer =
+  (exp, val) -> console.log printScheem(exp), ' => ', printScheem(val)
+
 
 class Environment
   constructor: (@parent) ->
@@ -147,7 +150,7 @@ specialForms =
       scheemTracer = if tracer?
         _eval tracer, env, true
       else
-        (exp, val) -> console.log printScheem(exp), ' => ', printScheem(val)
+        SU.defaultTracer
       ret = null
       try
         tracing = true
@@ -158,6 +161,19 @@ specialForms =
         scheemTracer = oldScheemTracer
         tracing = oldTracing
         ret
+  'no-trace':
+    checkSyntax: (expr) -> assertArity expr, 1
+    evaluate: (exprs, env) ->
+      oldTracing = tracing
+      ret = null
+      try
+        tracing = false
+        ret = _eval exprs[0], env
+      catch ex
+        throw ex
+      finally
+        tracing = oldTracing
+        return ret
 
 SU.addSpecialForm = addSpecialForm = (name, generator) ->
   specialForms[name] = generator _eval
@@ -292,10 +308,15 @@ _eval = (expr, env, skipTrace) ->
       when 'number', 'string'
         return result
     if isSymbol(expr)
+      if unintern(expr) == printScheem(result)
+        return result
       if functions[unintern expr]? or unintern(expr).match(/^c[ad]r$/)
         return result
-    if expr.constructor.name == 'Array' and expr.length == 0
-      return result
+    if expr.constructor.name == 'Array'
+      return result if expr.length == 0
+      switch unintern expr[0]
+        when 'quote', 'no-trace'
+          return result
     try
       tracing = false
       scheemTracer expr, result

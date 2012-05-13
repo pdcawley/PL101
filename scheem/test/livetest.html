@@ -22,13 +22,50 @@
     <h2 class="subtitle">It's Scheme Jim, but not as we know it</h2>
     <section id="live-code" class="yui3-g">
       <section id="editor-holder" class="yui3-u-1-2">
-        <textarea id="editor" rows="10" cols="50" autofocus></textarea>
+        <textarea id="editor" rows="10" cols="50"></textarea>
       </section>
       <aside id="results" class="yui3-u-1-2">
-        <section id="error"></section>
         <section id="preview"></section>
         <section id="output"></section>
+        <section id="error"></section>
+        <section id="trace"></section>
       </aside>
+    </section>
+    <section id="examples">
+      <section id="kons">
+        <header>
+          <h1>Kons</h1>
+          <p><code>cons</code>, <code>car</code>, <code>cdr</code> and a few
+            others implemented using a functional representation.</p>
+        </header>
+        <section class="source">
+          <code>
+(define (kons kar kdr)
+  (lambda (cmd args)
+    (cond ((= cmd 'kar) kar)
+          ((= cmd 'kdr) kdr)
+          ((= cmd 'knull?) #f)
+          ((= cmd 'ktype) 'pair)
+          ((= cmd 'set-kar!) (set! kar (car args)))
+          ((= cmd 'set-kdr!) (set! cdr (car args)))
+          (else error "Bad command: " 'cmd))))
+
+(define *the-empty-kons*
+  (lambda (cmd args)
+    (cond ((= cmd 'null?) #t)
+          ((= cmd 'ktype) 'null)
+          (else error "Command " 'cmd
+                "expects argument of type &lt;pair&gt;; given '()"))))
+
+(define (kar kons) (kons 'kar ()))
+(define (kdr kons) (kons 'kdr ()))
+(define (knull? kons) (kons 'knull? ()))
+(define (set-kar! kons val) (kons 'set-kar (list val)))
+(define (set-kdr! kons val) (kons 'set-kdr (list val)))
+(define (kpair? kons) (= (kons 'ktype ()) 'pair))
+          </code>
+        </section>
+      </section>
     </section>
     <script src="../../lib/js/interaction.js"></script>
   </body>

@@ -7,7 +7,7 @@ renderProgram = (exprs, $target) ->
   for expr,i in exprs
     element = renderExpr expr
     element.data().exprNumber = i
-    $target.append element
+    $target.append element.wrap('<p class="top-level"></p>').parent()
 
 renderExpr = (expr) ->
   switch typeof expr
@@ -84,28 +84,54 @@ renderInExprList = (f) ->
 compileAndRun = (src) ->
   e = $('#error')
   s = $('#preview')
-  o = $('#output');
+  o = $('#output')
+  t = $('#trace')
+  r = $('#results')
 
-  e.hide();
-  $().add(o).add(s).html('');
+
+  r.removeClass("alert-success alert-error")
+  e.empty()
 
   if $.trim(src) == '' then return
 
   try
     p = SCHEEM.parse(src, 'program')
+    r.addClass('alert-success').removeClass('alert-error')
   catch ex
     e.text("Parse error: #{ex} at line #{ex.line}, column: #{ex.column}").show()
+    r.addClass('alert-error').removeClass('alert-success')
     return
 
+  $().add(t).add(o).add(s).empty();
   renderProgram p, s
 
   try
     res = evalScheemProgram(src, env)
+    r.addClass('alert-success').removeClass('alert-error')
   catch ex
     e.text("Runtime error: #{ex}").show()
+    r.addClass('alert-error').removeClass('alert-success')
     return
 
   o.append($("<span class='result'></span>").text(" => #{printScheem res.result}"))
+
+SU.defaultTracer =
+  (->
+    lastSym = null
+    lastVal = null
+    (exp, val) ->
+      if SU.isSymbol(exp)
+        if unintern(exp) == lastSym and val == lastVal
+          return
+        else
+          lastSym = unintern exp
+          lastVal = val
+
+      line = $("<p><span class='trace-exp'></span> => <span class='trace-res'></span></p>")
+      line.find('.trace-exp').text(printScheem exp)
+      line.find('.trace-res').text(printScheem val)
+      $('#trace').append(line)
+  )()
 
 editor = CodeMirror.fromTextArea(
   document.getElementById('editor')
@@ -123,7 +149,30 @@ editor = CodeMirror.fromTextArea(
     )
 )
 
+addToEditor = (code) ->
+  editor.setValue code.trim() + "\n"
+  editor.focus()
+  for i in [0 .. editor.lineCount() - 1]
+    editor.indentLine i
+  editor.setCursor(
+    editor.lineCount() - 1
+    0
+  )
+
 $(".example").click ->
   clearTimeout t
   editor.setValue $(this).find('code').text()
   compileAndRun editor.getValue()
+
+$("#examples").on(
+  'click'
+  'header'
+  (event) -> $(this).next().toggle('blind')
+)
+.on(
+  'click'
+  '.source'
+  (event) ->
+    addToEditor($(this).text())
+    event.preventDefault()
+)
