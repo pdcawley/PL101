@@ -7,8 +7,9 @@
     
     <link rel="stylesheet" href="../../lib/css/styles.css">
     <link rel="stylesheet" href="../../external/codemirror/lib/codemirror.css">
-    <script src=
-            "http://nathansuniversity.com/js/jquery-1.7.1.min.js">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js">
     </script>
     <!-- should this be a mode/scheem.js? -->
     <script src="../../external/codemirror/lib/codemirror.js"></script>
@@ -18,11 +19,23 @@
     <script src="../scheem.js"></script>
   </head>
   <body>
-    <h1>Scheem Live Demo</h1>
-    <h2 class="subtitle">It's Scheme Jim, but not as we know it</h2>
+    <header>
+      <h1>Scheem Live Demo</h1>
+      <h2 class="subtitle">It's Scheme Jim, but not as we know it</h2>
+      <p>Scheem is a cut down implementation of Scheme, missing useful things
+      like tail call optimization, macros and 90% of the standard
+      library. About the most useful thing it does have when you're debugging
+      is a <code>trace</code> special form which will spam the results pane
+      with an execution trace.
+    </header>
     <section id="live-code" class="yui3-g">
       <section id="editor-holder" class="yui3-u-1-2">
-        <textarea id="editor" rows="10" cols="50"></textarea>
+        <textarea id="editor" rows="10" cols="50">
+(define (factorial n)
+  (if (= n 0) 1
+    (* n (factorial (- n 1)))))
+(trace (factorial 3))
+        </textarea>
       </section>
       <aside id="results" class="yui3-u-1-2">
         <section id="preview"></section>
@@ -32,6 +45,12 @@
       </aside>
     </section>
     <section id="examples">
+      <header>
+        <h1>Code samples</h1>
+        <p>These code samples can either be inserted into the editor above or,
+        possibly more usefully, evaluated and loaded into the editor's
+        environment so you can experiment with the results without scrolling
+        through a ream of code.</p>
       <section id="kons">
         <header>
           <h1>Kons</h1>

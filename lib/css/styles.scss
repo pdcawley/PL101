@@ -117,7 +117,8 @@ body {
 }
 
 #examples {
-    .source code {
-        white-space: pre;
+    .source {
+        code { white-space: pre; }
+        display: none;
     }
 }

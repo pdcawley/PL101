@@ -115,6 +115,13 @@ compileAndRun = (src) ->
 
   o.append($("<span class='result'></span>").text(" => #{printScheem res.result}"))
 
+loadSource = (src) ->
+  try
+    env = evalScheemProgram(src, env).env
+  catch ex
+    console.log "Failed to load #{src} into the editor", ex
+
+
 SU.defaultTracer =
   (->
     lastSym = null
@@ -149,6 +156,8 @@ editor = CodeMirror.fromTextArea(
     )
 )
 
+compileAndRun editor.getValue()
+
 addToEditor = (code) ->
   editor.setValue code.trim() + "\n"
   editor.focus()
@@ -159,20 +168,39 @@ addToEditor = (code) ->
     0
   )
 
+
 $(".example").click ->
   clearTimeout t
   editor.setValue $(this).find('code').text()
   compileAndRun editor.getValue()
 
+$("#examples section header h1")
+  .append( '<button class="show-hide">Show</button>' )
+  .append( '<button class="insert-ex">Insert</button>' )
+  .append( '<button class="load-ex">Load</button>' )
+  .find('button').button()
+
 $("#examples").on(
   'click'
-  'header'
-  (event) -> $(this).next().toggle('blind')
+  'header button.show-hide'
+  (event) ->
+    $(this).parents('header').next().toggle('blind')
+    event.preventDefault()
+    event.stopPropagation()
 )
 .on(
   'click'
-  '.source'
+  'button.insert-ex'
   (event) ->
-    addToEditor($(this).text())
+    addToEditor($(this).parents('header').next().text())
     event.preventDefault()
+    event.stopPropagation()
+)
+.on(
+  'click'
+  'button.load-ex'
+  (e) ->
+    loadSource($(this).parents('header').next().text())
+    compileAndRun editor.getValue()
+    event.stopPropagation()
 )
