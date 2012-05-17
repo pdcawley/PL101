@@ -1,0 +1,134 @@
+start = statements
+
+statements = statement*
+
+statement
+    = expr:expression _ ";"
+        { return expr }
+    / v:identifier _ ":=" _ expr:expression _ ";"
+        { return { tag: ":=", left: v, right: expr } }
+    / _ "define " _ v:identifier _
+        "(" _ ")" _ "{" _ body:statements _ "}"
+        { return { tag: "define", name: v, args: [], body:body } }
+    / _ "define " _ v:identifier
+        "(" args:ident_list _ ")" _ "{" _ body:statements _ "}"
+        { return { tag: "define", name: v, args: args, body:body } }
+    / _ "var " _ v:identifier _ ";"
+        { return { tag: "var", name: v } }
+    / _ "if" _ "(" expr:expression _ ")" _
+      "{" _ body:statements _ "}"
+        { return { tag: "if", expr: expr, body: body } }
+    / _ "repeat" _ "(" expr:expression _ ")" _
+      "{" _ body:statements _ "}"
+        { return { tag: "repeat", expr: expr, body: body } }
+
+comma_identifier = _ "," v:identifier { return v }
+
+ident_list
+    = first:identifier rest:comma_identifier*
+        { return [first].concat(rest) }
+
+expression
+    = expr:comparative
+        { return expr; }
+
+comp_op = "<=" / ">=" / "!=" / "==" / "<" / ">"
+
+comparative
+    = _ left:additive _ op:comp_op _ right:comparative
+        { return {tag: op, left:left, right:right}; }
+    / additive
+
+additive_op = "+" / "-"
+
+additive
+    = _ left: multiplicative _ op:additive_op _ right: additive
+        { return { tag: op, left: left, right: right } }
+    / multiplicative
+
+mult_op = "*" / "/"
+
+multiplicative
+    = _ left:primary _ op:mult_op _ right:multiplicative
+        { return {tag: op, left: left, right: right} }
+    / primary
+
+primary
+    = number
+    / v:identifier "(" _ ")"
+        { return { tag: "call", name: v, args: [] } }
+    / v:identifier "(" _ args:arglist _ ")"
+        { return { tag: "call", name: v, args: args } }
+    / v:identifier
+        { return { tag: "ident", name: v } }
+    / _ "(" expr:expression _ ")"
+        { return expr }
+
+comma_expression = _ "," expr:expression
+        { return expr }
+
+arglist
+    = first:expression rest:comma_expression*
+        { return [first].concat(rest) }
+
+
+identifier
+    = _ firstchar:validfirstchar chars:validchar*
+        { return firstchar + chars.join('') }
+
+validfirstchar
+    = [a-zA-Z_]
+
+validchar
+    = [0-9a-zA-Z_]
+
+_ = (newline / space / comment)*
+
+newline = "\n" / "\r\n" / "\r"
+
+comment = "//" (!newline)*
+
+space = [ \t\v\f]
+
+
+number "number"
+  = _ int_:int frac:frac exp:exp { return parseFloat(int_ + frac + exp); }
+  / _ int_:int frac:frac         { return parseFloat(int_ + frac);       }
+  / _ int_:int exp:exp           { return parseFloat(int_ + exp);        }
+  / _ int_:int                   { return parseFloat(int_);              }
+
+int
+  = digit19:digit19 digits:digits     { return digit19 + digits;       }
+  / digit:digit
+  / "-" digit19:digit19 digits:digits { return "-" + digit19 + digits; }
+  / "-" digit:digit                   { return "-" + digit;            }
+  / "+" digit19:digit19 digits:digits { return digit19 + digits;       }
+  / "+" digit:digit                   { return digit;                  }
+
+frac
+  = "." digits:digits { return "." + digits; }
+
+exp
+  = e:e digits:digits { return e + digits; }
+
+digits
+  = digits:digit+ { return digits.join(""); }
+
+e
+  = e:[eE] sign:[+-]? { return e + sign; }
+
+/*
+ * The following rules are not present in the original JSON gramar, but they are
+ * assumed to exist implicitly.
+ *
+ * FIXME: Define them according to ECMA-262, 5th ed.
+ */
+
+digit
+  = [0-9]
+
+digit19
+  = [1-9]
+
+hexDigit
+  = [0-9a-fA-F]
