@@ -4,7 +4,7 @@ statements = statement*
 
 statement
     = expr:expression _ ";"
-        { return expr }
+        { return { tag: 'ignore', body: expr } }
     / v:identifier _ ":=" _ expr:expression _ ";"
         { return { tag: ":=", left: v, right: expr } }
     / _ "define " _ v:identifier _

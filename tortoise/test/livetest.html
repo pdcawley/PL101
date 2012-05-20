@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+ <html lang="en">
+   <head>
+     <title>Tortoise Live Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="stylesheet" href="../../external/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../../lib/css/styles.css">
+    <link rel="stylesheet" href="../../external/codemirror/lib/codemirror.css">
+   </head>
+   <body>
+     <div class="navbar navbar-fixed-top">
+     </div>
+     <div class="container">
+       <div class="row">
+         <div class="span8">
+       <header>
+         <h1>Tortoise Live Test</h1>
+         <h2>Tortoise is not Logo</h2>
+       </header>
+       <section id="live-code">
+         <textarea id="editor-holder" style="width:100%;height:300px">
+           define square(len) {
+             repeat(4) {
+               forward(len);
+               right(90);
+             }
+           }
+           square(100);
+         </textarea>
+         <button id="do-it" class="btn btn-primary" type="submit">
+           Do it!
+         </button>
+       </section>
+
+       <section id="display" style="width:100%;height700px;background-color:#eee">
+       </section>
+     </div>
+     </div>
+     </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js">
+    </script>
+    <script src="../../external/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../../lib/js/raphael-min.js"></script>
+    <script src="../parser.js"></script>
+    <script src="../tortoise.min.js"></script>
+    <script>
+var interp = new TortoiseInterpreter('display');
+$('#do-it').click(function() {
+  var sourcecode = $('#editor-holder').val();
+  interp.turtle.clear();
+  interp.evalString(sourcecode);
+});
+
+</script>
+   </body>
+ </html>
