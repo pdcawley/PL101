@@ -1,19 +1,33 @@
 if (typeof module != 'undefined')
-  exports = module.exports
+  _ = module.exports
   PEG = require('pegjs')
   fs = require('fs');
-  exports.parse = parse =
+  _.parse = parse =
     PEG.buildParser(fs.readFileSync('scheem.peg', 'utf-8')).parse
 else
-  exports = window
-  exports.parse = parse = SCHEEM.parse
+  _ = window
+  _.parse = parse = SCHEEM.parse
 
-exports.ScheemUtils = {}
+_.ScheemUtils = {}
 
-scheemTracer = null
-tracing = false
+thunk = (f, lst) ->
+  tag: "thunk"
+  func: f
+  args: lst
 
-SU = exports.ScheemUtils
+thunkValue = (val) ->
+  tag: "value"
+  val: val
+
+trampoline = (thk) ->
+  while typeof thk == 'object' and thk.tag?
+    switch thk.tag
+      when 'value' then return thk.val
+      when 'thunk'
+        thk = thk.func((thk.args ? [])...)
+  return thk
+
+SU = _.ScheemUtils
 
 throwBadArity = (expr) ->
   [form, parts...] = expr;
@@ -35,9 +49,6 @@ SU.intern = intern = (symbol) ->
   else
     tokenType: 'symbol'
     value: symbol
-SU.defaultTracer =
-  (exp, val) -> console.log printScheem(exp), ' => ', printScheem(val)
-
 
 class Environment
   constructor: (@parent) ->
@@ -71,109 +82,119 @@ class Environment
 assertArity = (expr, requiredArity) ->
   throwBadArity(expr) unless (arity(expr) == requiredArity + 1)
 
+thunk_eval = (expr, env, cont) ->
+  thunk _eval, [expr, env, cont]
+
+eval_body = (exprs, env, cont) ->
+  thunkLoop = (expr, rest...) ->
+    if rest.length
+      thunk_eval expr, env, ->
+        thunk thunkLoop, rest
+    else
+      thunk_eval expr, env, (res) ->
+        thunk cont, [res]
+  thunkLoop exprs...
+
 specialForms =
   quote:
     checkSyntax: (expr) -> assertArity expr, 1
-    evaluate: ([expr]) -> expr
+    evaluate: (expr, env, cont) ->
+      thunk cont, expr
   define:
     checkSyntax: (expr) ->
       unless expr[1].constructor.name == 'Array'
         assertArity expr, 2
-    evaluate: (exprs, env) ->
+    evaluate: (exprs, env, cont) ->
       if exprs[0].constructor.name == 'Array'
         [[ident, argl...], body...] = exprs
-        func = _eval(['lambda', argl, body...], env)
-        func.key = unintern ident
-        addVar env, ident, func
+        thunk _eval, [
+          ['lambda', argl, body...]
+          env
+          (func) ->
+            func.key = unintern ident
+            addVar env, ident, func
+            thunk cont, [0]
+        ]
       else
-        addVar env, exprs[0], _eval(exprs[1], env)
-      return 0
+        thunk_eval exprs[1], env, (val) ->
+          addVar env, exprs[0], val
+          thunk cont, [0]
   'set!':
     checkSyntax: (expr) -> assertArity expr, 2
-    evaluate: ([ident, val], env) ->
+    evaluate: ([ident, expr], env, cont) ->
       unless canSet(env, ident)
         throw new Error "set!: cannot set variable before its definition: #{unintern ident}"
-      setVar env, ident, _eval(val, env)
-      return 0
+      thunk _eval, [
+        expr, env, (val) ->
+          setVar env, ident, val
+          thunk cont, [0]
+      ]
   'if':
     checkSyntax: (expr) -> assertArity expr, 3
-    evaluate: ([test, ifClause, elseClause], env) ->
-      testResult = _eval(test, env)
-      if testResult then _eval(ifClause, env)
-      else _eval(elseClause, env)
+    evaluate: ([test, ifClause, elseClause], env, cont) ->
+      thunk _eval, [
+        test, env, (testResult) ->
+          if testResult
+            thunk _eval, [ifClause, env, cont]
+          else
+            thunk _eval, [elseClause, env, cont]
+      ]
   'or':
-    evaluate: (exprs, env) ->
-      for expr in exprs
-        ret = _eval expr, env
-        return ret if ret
+    evaluate: (exprs, env, cont) ->
+      thunkLoop = (expr, rest...) ->
+        if expr?
+          thunk_eval expr, env, (ret) ->
+            if ret then thunk cont, [ret]
+            else
+              thunk thunkLoop, rest
+        else
+          thunk cont, [false]
+      thunk thunkLoop, exprs
   'and':
-    evaluate: (exprs, env) ->
-      ret = true
-      for expr in exprs
-        ret = _eval expr, env
-        return false unless ret
-      return ret
+    evaluate: (exprs, env, cont) ->
+      thunkLoop = (expr, rest...) ->
+        if expr?
+          thunk_eval expr, env, (res) ->
+            if res
+              thunk thunkLoop, rest
+            else
+              thunk cont, [false]
+        else
+          thunk cont, [true]
+      thunkLoop exprs...
   'begin':
-    evaluate: (exprs, env) ->
-      retval = _eval(expr, env) for expr in exprs
-      return retval
+    evaluate: (exprs, env, cont) -> eval_body exprs, env, cont
   'lambda':
     checkSyntax: (expr) ->
       unless expr[1].constructor.name == 'Array'
         throw new Error "lambda: bad args in: #{expr}"
       unless expr.length > 2
         throw new Error "lambda: missing body in #{expr}"
-    evaluate: (expr, env) ->
+    evaluate: (expr, env, cont) ->
       [argl, body...] = expr
-      func = (args...) ->
+      func = (args, cont) ->
         af = {};
         af[argl[i].value] = val for val, i in args
         activationEnv = env.extendWith(af)
-        retval = _eval(expr, activationEnv) for expr in body
-        return retval
+        eval_body body, activationEnv, cont
       func.arity = argl.length
-      return func
+      thunk cont, [func]
   'cond':
-    evaluate: (exprs, env) ->
-      for clause in exprs
-        [cond, body...] = clause
-        isElseClause = isSymbol(cond) && unintern(cond) == 'else'
-        if isElseClause || _eval(cond, env)
-          return _eval [ 'begin', body... ], env
-      throw new Error "Reached the end of the clauses and nothing came true in: " +
-        printScheem [ 'cond', exprs... ]
-  'trace':
-    evaluate: (exprs, env) ->
-      [expr, tracer] = exprs
-      oldScheemTracer = scheemTracer
-      oldTracing = tracing
-      scheemTracer = if tracer?
-        _eval tracer, env, true
-      else
-        SU.defaultTracer
-      ret = null
-      try
-        tracing = true
-        ret = _eval expr, env
-      catch ex
-        throw ex
-      finally
-        scheemTracer = oldScheemTracer
-        tracing = oldTracing
-        ret
-  'no-trace':
-    checkSyntax: (expr) -> assertArity expr, 1
-    evaluate: (exprs, env) ->
-      oldTracing = tracing
-      ret = null
-      try
-        tracing = false
-        ret = _eval exprs[0], env
-      catch ex
-        throw ex
-      finally
-        tracing = oldTracing
-        return ret
+    evaluate: (exprs, env, cont) ->
+      thunkLoop = (clause, rest...) ->
+        if clause?
+          [cond, body...] = clause
+          isElseClause = isSymbol(cond) && unintern(cond) == 'else'
+          if isElseClause
+            eval_body body, env, cont
+          else
+            eval_thunk clause, env, (res) ->
+              if res then eval_body body, env, cont
+              else
+                thunk thunkLoop, rest
+        else
+          throw new Error "Reached the end of the clauses and nothing came true in: " +
+            printScheem [ 'cond', exprs... ]
 
 SU.addSpecialForm = addSpecialForm = (name, generator) ->
   specialForms[name] = generator _eval
@@ -231,22 +252,23 @@ functions =
   unintern: (sym) -> unintern sym
   error: (args...) ->
     throw new Error (unintern arg for arg in args).join('')
-  breakpoint: (args...) ->
-    console.log args
 
-func.key = key for key, func of functions
+thunkedFuncs = {}
+for name, func of functions
+  func = (->
+    unThunked = func
+    thunked = (args, cont) ->
+      thunk cont, [unThunked args...]
+    thunked.arity = unThunked.arity ? unThunked.length
+    thunked
+  )()
+  func.key = name
+  thunkedFuncs[name] = func
 
 arity = (func) -> func.arity ? func.length
 
-_apply = (func, exprs, env) ->
-  if arity(func) > 0
-    assertArity [func, exprs...], arity(func)
-
-  func( (_eval(expr, env) for expr in exprs)... )
-
-
-exports.theGlobalEnv = theGlobalEnv = new Environment theNullEnvironment
-theGlobalEnv.frame = functions
+_.theGlobalEnv = theGlobalEnv = new Environment theNullEnvironment
+theGlobalEnv.frame = thunkedFuncs
 
 # lookup = (env, symbol) -> env[symbol]
 # canSet = (env, symbol) -> env.hasOwnProperty(symbol)
@@ -264,7 +286,8 @@ fixupEnv = (env) ->
   else
     theGlobalEnv.extendWith(env)
 
-exports.evalScheem = evalScheem = (expr, env) -> _eval expr, fixupEnv(env)
+_.evalScheem = evalScheem = (expr, env) ->
+  trampoline thunk_eval expr, fixupEnv(env), thunkValue
 
 SU.isSymbol = isSymbol = (expr) ->
   expr?.constructor?.name == 'Object' &&
@@ -282,49 +305,42 @@ make_c_splat_r = (expr, env) ->
       return ret
   )
 
-_eval = (expr, env, skipTrace) ->
-  result = if typeof expr == 'number'
-      expr
-    else if typeof expr == 'string'
-      expr
-    else if isSymbol expr
-      switch expr.value
-        when '#t' then true
-        when '#f' then false
-        else
-          if expr.value.match(/^c[ad]+r/) and not env.isDefined expr
-            make_c_splat_r unintern expr
-          lookup env, expr
-    else if expr.length == 0 then []
-    else if sf = specialForms[unintern expr[0]]
-      [key, exprs...] = expr
-      sf.checkSyntax(expr) if sf.checkSyntax
-      sf.evaluate(exprs, env)
-    else
-      _apply _eval(expr[0], env), expr[1...], env
-  return result unless tracing and not skipTrace
-  if scheemTracer? and not skipTrace
-    switch typeof expr
-      when 'number', 'string'
-        return result
-    if isSymbol(expr)
-      if unintern(expr) == printScheem(result)
-        return result
-      if functions[unintern expr]? or unintern(expr).match(/^c[ad]r$/)
-        return result
-    if expr.constructor.name == 'Array'
-      return result if expr.length == 0
-      switch unintern expr[0]
-        when 'quote', 'no-trace'
-          return result
-    try
-      tracing = false
-      scheemTracer expr, result
-    finally
-      tracing = true
-  return result
+_eval = (expr, env, cont) ->
+  if typeof expr == 'number'
+    thunk cont, [expr]
+  else if typeof expr == 'string'
+    thunk cont, [expr]
+  else if isSymbol expr
+    switch expr.value
+      when '#t' then thunk cont, [true]
+      when '#f' then thunk cont, [false]
+      else
+        if expr.value.match(/^c[ad]+r/) and not env.isDefined expr
+          thunk cont, [ make_c_splat_r unintern expr ]
+        thunk cont, [lookup env, expr]
+  else if expr.length == 0 then thunk cont, [[]]
+  else if sf = specialForms[unintern expr[0]]
+    [key, exprs...] = expr
+    sf.checkSyntax(expr) if sf.checkSyntax
+    thunk sf.evaluate, [exprs, env, cont]
+  else
+    thunk_eval expr[0], env, (func) ->
+      thunk _apply, [func, expr[1...], env, cont]
 
-exports.printScheem = printScheem = (expr) ->
+_apply = (func, exprs, env, cont) ->
+  if arity(func) > 0
+    assertArity [func, exprs...], arity(func)
+  args = []
+  thunkLoop = (expr, rest...) ->
+    if expr?
+      thunk_eval expr, env, (val) ->
+        args.push val
+        thunk thunkLoop, rest
+    else
+      thunk func, [args, cont]
+  thunk thunkLoop, exprs
+
+_.printScheem = printScheem = (expr) ->
   switch typeof expr
     when 'undefined' then "*undef*"
     when 'number' then "#{expr}"
@@ -349,16 +365,22 @@ exports.printScheem = printScheem = (expr) ->
 SU.isSpecialForm = (symbol) -> specialForms[unintern symbol]
 SU.isBound = (symbol, env) -> env.isDefined(symbol)
 
-exports.evalScheemString = evalScheemString = (src, env) ->
+_.evalScheemString = evalScheemString = (src, env) ->
   evalScheem(parse(src), env)
 
-exports.evalScheemProgram = evalScheemProgram = (src, env) ->
+_.evalScheemProgram = evalScheemProgram = (src, env) ->
   programEnv = fixupEnv env
   exprs = parse src, 'program'
-  results = (_eval expr, programEnv for expr in exprs)
-  return(
-    allResults: results
-    result: results[results.length - 1]
-    env: programEnv
-    parseTree: exprs
-  )
+  results = []
+  thunkLoop = (expr, rest...) ->
+    if expr?
+      eval_thunk expr, programEnv, (val) ->
+        results.push val
+        thunk thunkLoop, rest
+    else
+      thunkValue(
+        allResults: results
+        result: results[results.length-1]
+        env: programEnv
+        parseTree:exprs
+      )
